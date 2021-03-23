@@ -167,7 +167,8 @@ function ComputeSquare(aSquare, currentSquare, targetPosition)
 end
 	
 
-function lowestScoreSort(t,a,b)
+function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to sort the keys so we can iterate properly
+    -- And we sort the keys based on the values in the table t
 	return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
 end		
 
@@ -249,6 +250,8 @@ function GetPath(targetPosition)
 	closedList = {}
 	
 	tickCount = 0
+	
+	local finalMove = nil
 	repeat 
 		-- Get the square with the lowest score
 		local currentSquare
@@ -263,7 +266,8 @@ function GetPath(targetPosition)
 		openList[currentSquare.position] = nil -- Remove from open list
 		
 		if currentSquare.position == targetPosition then
-			-- We found the path target and put it in the list, we're done
+			-- We found the path target and put it in the list, we're done. 
+			finalMove = currentSquare
 			break
 		end
 		
@@ -288,20 +292,12 @@ function GetPath(targetPosition)
 		print(listLen(openList) .. " remaining entries in open list")
 		tickCount = tickCount + 1
 		coroutine.yield()
-		-- For debug purposes, wait for input before continuing always, and do this again rq
 		
-		sInput = nil
-		while true do
-		   sInput = read()
-		   if sInput ~= nil or sInput ~= "" then
-				 break -- Break out of the infinite loop
-		   end
-		end
 	until listLen(openList) == 0 
 	
 	-- Okay so, find the last element in closedList, it was just added.  Or the first, due to insert?
 	-- Going to assume first
-	local curSquare = closedList[1]
+	local curSquare = finalMove
 	-- Each one gets inserted in front of the previous one
 	local finalMoves = {}
 	while curSquare ~= nil do
