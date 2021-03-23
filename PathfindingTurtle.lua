@@ -14,6 +14,12 @@ local occupiedPositions = {} -- The key is the vec3, and the value is true if oc
 local initialOrientation = vec3(1,0,0)
 local initialPosition = vec3(0,0,0)
 
+orientations = { vec3(1,0,0),
+				 vec3(0,0,1),
+				 vec3(-1,0,0),
+				 vec3(0,0,-1)} -- Where going higher in the list is turning right
+orientationIndex = 1
+
 turtle.orientation = initialOrientation 
 turtle.relativePos = initialPosition
 
@@ -35,6 +41,14 @@ function LoadData()
 	if allData and allData.position and allData.orientation and allData.occupiedPositions then
 		turtle.relativePos = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
+		for k,v in ipairs(orientations) do
+			if v == turtle.orientation then
+				orientationIndex = k
+				break
+			end
+		end
+		
+		
 		local stringOccupiedPositions = allData.occupiedPositions
 		occupiedPositions = {}
 		for k,v in pairs(stringOccupiedPositions) do
@@ -127,24 +141,20 @@ end
 
 
 function updateTurtleOrientationLeft()
-	-- Orientation is interesting... we can only turn left or right, so Y can be ignored completely
-	-- But basically, x = !x, z = !z
-	-- Sort of.
-	-- Default orientation is 1,0,0
-	-- Turning right should give us a positive z, so 0,0,1
-	-- And turning left gives us a negative one, 0,0,-1
-	-- So I guess left negates it...
-	local x = turtle.orientation.x
-	local z = turtle.orientation.z
-	turtle.orientation.z = -x
-	turtle.orientation.x = -z
+	
+	orientationIndex = orientationIndex -1
+	if orientationIndex < 1 then
+		orientationIndex = #orientations
+	end
+	turtle.orientation = orientations[orientationIndex]
 end
 
 function updateTurtleOrientationRight()
-	local x = turtle.orientation.x
-	local z = turtle.orientation.z
-	turtle.orientation.z = x
-	turtle.orientation.x = z
+	orientationIndex = orientationIndex +1
+	if orientationIndex > #orientations then
+		orientationIndex = 1
+	end
+	turtle.orientation = orientations[orientationIndex]
 end
 
 function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
@@ -332,31 +342,33 @@ function followPath(moveList)
 		print("Performing move to adjacent square from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(v.position))
 		local targetVector = v.position - turtle.relativePos
 		local success
-		if targetVector.y ~= 0 then
-			-- Just go up or down
-			if targetVector.y > 0 then
-				success = turtle.up()
-				if not success then occupiedPositions[v.position] = true end
+		if v.position ~= turtle.relativePos then
+			if targetVector.y ~= 0 then
+				-- Just go up or down
+				if targetVector.y > 0 then
+					success = turtle.up()
+					if not success then occupiedPositions[v.position] = true end
+				else
+					success = turtle.down()
+					if not success then occupiedPositions[v.position] = true end
+				end
 			else
-				success = turtle.down()
+				turnToAdjacent(v.position)
+				success = turtle.forward()
 				if not success then occupiedPositions[v.position] = true end
 			end
-		else
-			turnToAdjacent(v.position)
-			success = turtle.forward()
-			if not success then occupiedPositions[v.position] = true end
-		end
-		
-		if not success then -- We were blocked for some reason, re-pathfind
-			-- Find the target...
-			print("Obstacle detected, calculating and following new path")
-			local lastTarget = nil
-			for k2, v2 in pairs(moveList) do
-				lastTarget = v2
+			
+			if not success then -- We were blocked for some reason, re-pathfind
+				-- Find the target...
+				print("Obstacle detected, calculating and following new path")
+				local lastTarget = nil
+				for k2, v2 in pairs(moveList) do
+					lastTarget = v2
+				end
+				local newPath = GetPath(lastTarget.position)
+				followPath(newPath)
+				return
 			end
-			local newPath = GetPath(lastTarget.position)
-			followPath(newPath)
-			return
 		end
 	end
 	print("Path successfully followed, final position: " .. vectorToString(turtle.relativePos))
