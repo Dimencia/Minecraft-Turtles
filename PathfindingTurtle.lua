@@ -216,6 +216,7 @@ local openList = {}
 local closedList = {}
 			
 function GetPath(targetPosition)
+	print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
 	local currentSquare = {position=turtle.relativePos,G=0,H=turtle.relativePos:len()}
 	currentSquare.F = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
