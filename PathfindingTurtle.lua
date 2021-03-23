@@ -184,13 +184,7 @@ function getAdjacentWalkableSquares(currentSquare)
 			if not (x == 0 and z == 0) and (x == 0 or z == 0) then
 				-- Positions like 1,0,1, -1,0,-1, etc are all invalid, at least one param must be 0, but not all of them
 				local targetPos = currentSquare.position + vec3(x,y,z)
-				if not occupiedPositions[targetPos] then 
-					if openList[targetPos] then
-						results[targetPos] = openList[targetPos]
-					elseif not closedList[targetPos] then
-						results[targetPos] = {position=targetPos} 
-					end
-				end
+				results[targetPos] = {position=targetPos} 
 			end
 		
 		end
@@ -201,22 +195,26 @@ function getAdjacentWalkableSquares(currentSquare)
 	for y=-1,1,2 do
 		local targetPos = currentSquare.position + vec3(x,y,z)
 		if not occupiedPositions[targetPos] then 
-			if openList[targetPos] then
-				results[targetPos] = openList[targetPos]
-			elseif not closedList[targetPos] then
-				results[targetPos] = {position=targetPos} 
-			end
+			results[targetPos] = {position=targetPos} 
 		end
 	end
 	
 	return results
 end
 
-local openList = {}
-local closedList = {}
+function listLen(list)
+	local count = 0
+	for k,v in pairs list do
+		if v ~= nil then count = count + 1 end
+	end
+	return count
+end
+
+openList = {}
+closedList = {}
 			
 function GetPath(targetPosition)
-	print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
+    print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
 	if turtle.position then print ("Also, it lists a regular position of " .. vectorToString(turtle.position)) end
 	local currentSquare = {position=turtle.relativePos,G=0,H=turtle.relativePos:len()}
 	currentSquare.F = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
@@ -227,8 +225,12 @@ function GetPath(targetPosition)
 	closedList = {}
 	repeat 
 		-- Get the square with the lowest score
-		openList:sort(lowestScoreSort)
-		local currentSquare = openList[1]
+		table.sort(openList,lowestScoreSort)
+		local currentSquare
+		for k,v in pairs(openList) do -- I have no idea how else to do this
+			currentSquare = v
+			break
+		end
 		
 		
 		-- Add this to the closed list, kind of assuming we're going to move there.  Sort of.  Remove from open.
@@ -255,8 +257,8 @@ function GetPath(targetPosition)
 				end
 			end
 		end
-		print(#openList .. " remaining entries in open list")
-	until #openList > 0 -- lua syntax?
+		print(listLen(openList) .. " remaining entries in open list")
+	until listLen(openList) == 0 -- lua syntax?
 	
 	-- Okay so, find the last element in closedList, it was just added.  Or the first, due to insert?
 	-- Going to assume first
