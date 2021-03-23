@@ -251,9 +251,8 @@ function GetPath(targetPosition)
 	tickCount = 0
 	repeat 
 		-- Get the square with the lowest score
-		table.sort(openList,lowestScoreSort)
 		local currentSquare
-		for k,v in spairs(openList) do -- I have no idea how else to do this
+		for k,v in spairs(openList,lowestScoreSort) do -- I have no idea how else to do this
 			currentSquare = v
 			break
 		end
@@ -290,23 +289,7 @@ function GetPath(targetPosition)
 		tickCount = tickCount + 1
 		coroutine.yield()
 		-- For debug purposes, wait for input before continuing always, and do this again rq
-		local presortlist = ""
-		for k,v in spairs(openList) do
-			presortlist = presortlist .. v.score .. ","
-		end
-		print("Pre-Sort: ", presortlist)
-		table.sort(openList,lowestScoreSort)
-		presortlist = ""
-		for k,v in spairs(openList) do
-			presortlist = presortlist .. v.score .. ","
-		end
-		print("Post-Sort: ", presortlist)
-		local currentSquare
-		for k,v in spairs(openList) do -- I have no idea how else to do this
-			currentSquare = v
-			break
-		end
-		print("Lowest adjacent scoring square: " .. vectorToString(currentSquare.position), currentSquare.score)
+		
 		sInput = nil
 		while true do
 		   sInput = read()
@@ -330,7 +313,7 @@ function GetPath(targetPosition)
 end
 
 function followPath(moveList)
-	for k,v in pairs(moveList) do
+	for k,v in ipairs(moveList) do
 		print("Performing move to adjacent square from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(v.position))
 		local targetVector = v.position - turtle.relativePos
 		local success
