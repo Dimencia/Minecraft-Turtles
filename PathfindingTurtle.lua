@@ -19,7 +19,11 @@ turtle.relativePos = initialPosition
 
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
-	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
+	local stringOccupiedPositions = {}
+	for k,v in pairs(occupiedPositions) do
+		stringOccupiedPositions[vectorToString(k)] = v
+	end
+	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=stringOccupiedPositions}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
@@ -31,9 +35,24 @@ function LoadData()
 	if allData and allData.position and allData.orientation and allData.occupiedPositions then
 		turtle.relativePos = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
-		occupiedPositions = allData.occupiedPositions
+		local stringOccupiedPositions = allData.occupiedPositions
+		occupiedPositions = {}
+		for k,v in pairs(stringOccupiedPositions) do
+			occupiedPositions[vec3(stringSplit(k,","))] = v
+		end
 	end
 	f.close()
+end
+
+function stringSplit (inputstr, sep)
+        if sep == nil then
+                sep = "%s"
+        end
+        local t={}
+        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+                table.insert(t, str)
+        end
+        return t
 end
 
 if fs.exists("PathData") then
@@ -173,7 +192,7 @@ function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to s
 end		
 
 function vectorToString(vec)
-	return "(" .. vec.x .. "," .. vec.y .. "," .. vec.z .. ")"
+	return vec.x .. "," .. vec.y .. "," .. vec.z
 end
 
 
@@ -291,7 +310,7 @@ function GetPath(targetPosition)
 		end
 		print(listLen(openList) .. " remaining entries in open list")
 		tickCount = tickCount + 1
-		coroutine.yield()
+		--coroutine.yield()
 		
 	until listLen(openList) == 0 
 	
@@ -301,7 +320,7 @@ function GetPath(targetPosition)
 	-- Each one gets inserted in front of the previous one
 	local finalMoves = {}
 	while curSquare ~= nil do
-		finalMoves:insert(curSquare,0)
+		table.insert(finalMoves,1, curSquare)
 		curSquare = curSquare.parent
 	end
 	
