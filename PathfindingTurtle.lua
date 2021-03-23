@@ -264,8 +264,21 @@ function GetPath(targetPosition)
 		end
 		print(listLen(openList) .. " remaining entries in open list")
 		tickCount = tickCount + 1
-		if tickCount % 1000 == 0 then
-			coroutine.yield()
+		coroutine.yield()
+		-- For debug purposes, wait for input before continuing always, and do this again rq
+		table.sort(openList,lowestScoreSort)
+		local currentSquare
+		for k,v in pairs(openList) do -- I have no idea how else to do this
+			currentSquare = v
+			break
+		end
+		print("Lowest adjacent scoring square: " .. vectorToString(currentSquare.position), currentSquare.score)
+		sInput = nil
+		while true do
+		   sInput = read()
+		   if sInput ~= nil or sInput ~= "" then
+				 break -- Break out of the infinite loop
+		   end
 		end
 	until listLen(openList) == 0 
 	
