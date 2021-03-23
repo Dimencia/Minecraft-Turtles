@@ -217,7 +217,7 @@ function GetPath(targetPosition)
     print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
 	if turtle.position then print ("Also, it lists a regular position of " .. vectorToString(turtle.position)) end
 	local currentSquare = {position=turtle.relativePos,G=0,H=turtle.relativePos:len()}
-	currentSquare.F = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
+	currentSquare.score = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
 	openList = { } -- I guess this is a generic object, which has fields .position
 	openList[currentSquare.position] = currentSquare -- This makes it easier to add/remove
@@ -260,6 +260,7 @@ function GetPath(targetPosition)
 			end
 		end
 		print(listLen(openList) .. " remaining entries in open list")
+		print("Checking position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
 		tickCount = tickCount + 1
 		if tickCount % 1000 == 0 then
 			coroutine.yield()
