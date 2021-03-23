@@ -14,7 +14,7 @@ local occupiedPositions = {} -- The key is the vec3, and the value is true if oc
 local initialOrientation = vec3(1,0,0)
 local initialPosition = vec3(0,0,0)
 
-turtle.orientation = initialOrientation -- TODO load from file
+turtle.orientation = initialOrientation 
 turtle.position = initialPosition
 
 function SaveData()
@@ -26,9 +26,9 @@ function SaveData()
 end	
 
 function LoadData()
-	local f = fs.open("PathData", r)
+	local f = fs.open("PathData", "r")
 	local allData = json.decode(f.readAll())
-	if allData.position and allData.orientation and allData.occupiedPositions then
+	if allData and allData.position and allData.orientation and allData.occupiedPositions then
 		turtle.position = allData.position
 		turtle.orientation = allData.orientation
 		occupiedPositions = allData.occupiedPositions
@@ -40,7 +40,7 @@ if fs.exists("PathData") then
 	LoadData() -- Load before opening our write handle, which will erase everything
 end
 
-local dataFile = fs.open("PathData", "w")
+dataFile = fs.open("PathData", "w")
 SaveData() -- Make sure it's not empty if we don't make it to the next tick
 
 local baseDig = turtle.dig
@@ -216,7 +216,7 @@ local openList = {}
 local closedList = {}
 			
 function GetPath(targetPosition)
-	local currentSquare = {position=turtle.position,G=0,H=position:len()}
+	local currentSquare = {position=turtle.position,G=0,H=turtle.position:len()}
 	currentSquare.F = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
 	openList = { } -- I guess this is a generic object, which has fields .position
