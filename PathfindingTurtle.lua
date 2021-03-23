@@ -9,11 +9,11 @@ if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubuserconte
 local vec3 = require("vec3")
 local json = require("json")
 
-logFile = fs.open("Logfile")
+logFile = fs.open("Logfile", "w")
 
 oldPrint = print
 print = function(params)
-	oldPrint(params)
+	oldPrint(getDisplayString(params))
 	logFile.writeLine(getDisplayString(params))
 	logFile.flush()
 end
@@ -21,14 +21,19 @@ end
 function getDisplayString(object)
 	local result = ""
 	if type(object) == "table" then
+		result = result .. "{"
 		for k,v in pairs(object) do
-			result = result .. getDisplayString(v)
+			result = result .. getDisplayString(k) .. ":" .. getDisplayString(v)
 		end
-	elseif object ~= nil
+		result = result .. "}"
+	elseif type(object) == "boolean" then
+		if object then result = result .. "true" else result = result .. "false" end
+	elseif object ~= nil then
 		result = result .. object
 	else
 		result = result .. "nil"
 	end
+	return result
 end
 	
 occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
@@ -253,6 +258,7 @@ end
 			
 function getAdjacentWalkableSquares(currentSquare)
 	local results = {}
+	print("Occupied Positions: ", occupiedPositions)
 	for x=-1,1 do
 		for z=-1,1 do
 			local y = 0
@@ -387,6 +393,7 @@ function followPath(moveList)
 			if not success then -- We were blocked for some reason, re-pathfind
 				-- Find the target...
 				print("Obstacle detected, calculating and following new path")
+				print("Occupied Positions: ", occupiedPositions)
 				local lastTarget = nil
 				for k2, v2 in ipairs(moveList) do
 					lastTarget = v2
