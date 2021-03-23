@@ -175,6 +175,30 @@ function vectorToString(vec)
 	return "(" .. vec.x .. "," .. vec.y .. "," .. vec.z .. ")"
 end
 
+
+function spairs(t, order)
+    -- collect the keys
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    -- if order function given, sort by it by passing the table and keys a, b,
+    -- otherwise just sort the keys 
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    -- return the iterator function
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
 			
 function getAdjacentWalkableSquares(currentSquare)
 	local results = {}
@@ -229,7 +253,7 @@ function GetPath(targetPosition)
 		-- Get the square with the lowest score
 		table.sort(openList,lowestScoreSort)
 		local currentSquare
-		for k,v in pairs(openList) do -- I have no idea how else to do this
+		for k,v in spairs(openList) do -- I have no idea how else to do this
 			currentSquare = v
 			break
 		end
@@ -266,9 +290,19 @@ function GetPath(targetPosition)
 		tickCount = tickCount + 1
 		coroutine.yield()
 		-- For debug purposes, wait for input before continuing always, and do this again rq
+		local presortlist = ""
+		for k,v in spairs(openList) do
+			presortlist = presortlist .. v.score .. ","
+		end
+		print("Pre-Sort: ", presortlist)
 		table.sort(openList,lowestScoreSort)
+		presortlist = ""
+		for k,v in spairs(openList) do
+			presortlist = presortlist .. v.score .. ","
+		end
+		print("Post-Sort: ", presortlist)
 		local currentSquare
-		for k,v in pairs(openList) do -- I have no idea how else to do this
+		for k,v in spairs(openList) do -- I have no idea how else to do this
 			currentSquare = v
 			break
 		end
