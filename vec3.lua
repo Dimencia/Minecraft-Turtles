@@ -65,20 +65,20 @@ local unit_z = new(0,0,1)
 
 --- Create a new vector containing the same data.
 -- @return vec3
-function vector:clone()
-	return new(self.x, self.y, self.z)
+function vector.clone(a)
+	return new(a.x, a.y, a.z)
 end
 
 --- Unpack the vector into its components.
 -- @return number
 -- @return number
 -- @return number
-function vector:unpack()
-	return self.x, self.y, self.z
+function vector.unpack(a)
+	return a.x, a.y, a.z
 end
 
-function vector:__tostring()
-	return string.format("(%+0.3f,%+0.3f,%+0.3f)", self.x, self.y, self.z)
+function vector.__tostring(a)
+	return string.format("(%+0.3f,%+0.3f,%+0.3f)", a.x, a.y, a.z)
 end
 
 function vector.__unm(a)
@@ -158,8 +158,8 @@ end
 
 --- Vector length/magnitude.
 -- @return number
-function vector:len()
-	return sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+function vector.len(a)
+	return sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
 end
 
 --- Distance between two points.
@@ -189,27 +189,27 @@ end
 --- Normalize vector.
 -- Scales the vector in place such that its length is 1.
 -- @return vec3
-function vector:normalize_inplace()
-	local l = self:len()
+function vector.normalize_inplace(a)
+	local l = a:len()
 	if l > epsilon then
-		self.x, self.y, self.z = self.x / l, self.y / l, self.z / l
+		a.x, a.y, a.z = a.x / l, a.y / l, a.z / l
 	end
-	return self
+	return a
 end
 
 --- Normalize vector.
 -- Returns a copy of the vector scaled such that its length is 1.
 -- @return vec3
-function vector:normalize()
-	return self:clone():normalize_inplace()
+function vector.normalize(a)
+	return a:clone():normalize_inplace()
 end
 
 --- Rotate vector about an axis.
 -- @param phi Amount to rotate, in radians
 -- @param axis Axis to rotate by
 -- @return vec3
-function vector:rotate(phi, axis)
-	if axis == nil then return self end
+function vector.rotate(a, phi, axis)
+	if axis == nil then return a end
 
 	local u = axis:normalize() or Vector(0,0,1) -- default is to rotate in the xy plane
 	local c, s = cos(phi), sin(phi)
@@ -220,17 +220,17 @@ function vector:rotate(phi, axis)
 	local m3 = new((u.z * u.x * (1-c) - u.y * s), (u.z * u.y * (1-c) + u.x * s), (c + u.z * u.z * (1-c))      )
 
 	-- Return rotated vector
-	return new( m1:dot(self), m2:dot(self), m3:dot(self) )
+	return new( m1:dot(a), m2:dot(a), m3:dot(a) )
 end
 
-function vector:perpendicular()
-	return new(-self.y, self.x, 0)
+function vector.perpendicular(a)
+	return new(-a.y, a.x, 0)
 end
 
-function vector:project_on(v)
+function vector.project_on(a,v)
 	assert(isvector(v), "invalid argument: cannot project vector on " .. type(v))
 	-- (self * v) * v / v:len2()
-	local s = (self.x * v.x + self.y * v.y + self.z * v.z) / (v.x * v.x + v.y * v.y + v.z * v.z)
+	local s = (a.x * v.x + a.y * v.y + a.z * v.z) / (v.x * v.x + v.y * v.y + v.z * v.z)
 	return new(s * v.x, s * v.y, s * v.z)
 end
 
@@ -313,6 +313,7 @@ return setmetatable(
 		lerp     = lerp,
 		isvector = isvector,
 		zero     = zero,
+		len      = len,
 		unit_x   = unit_x,
 		unit_y   = unit_y,
 		unit_z   = unit_z
