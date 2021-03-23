@@ -186,7 +186,7 @@ function getAdjacentWalkableSquares(currentSquare)
 				if not occupiedPositions[targetPos] then 
 					if openList[targetPos] then
 						results[targetPos] = openList[targetPos]
-					elseif not closedList[targetPos]
+					elseif not closedList[targetPos] then
 						results[targetPos] = {position=targetPos} 
 					end
 				end
@@ -202,7 +202,7 @@ function getAdjacentWalkableSquares(currentSquare)
 		if not occupiedPositions[targetPos] then 
 			if openList[targetPos] then
 				results[targetPos] = openList[targetPos]
-			elseif not closedList[targetPos]
+			elseif not closedList[targetPos] then
 				results[targetPos] = {position=targetPos} 
 			end
 		end
