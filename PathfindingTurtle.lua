@@ -159,10 +159,10 @@ function detectBlocks()
 	SaveData()
 end
 			
-function ComputeSquare(aSquare, currentSquare)
+function ComputeSquare(aSquare, currentSquare, targetPosition)
 	aSquare.parent = currentSquare
 	aSquare.G = currentSquare.G+1
-	aSquare.H = aSquare.position:len()
+	aSquare.H = (targetPosition-aSquare.position):len()
 	aSquare.score = aSquare.G + aSquare.H
 end
 	
@@ -216,7 +216,7 @@ closedList = {}
 function GetPath(targetPosition)
     print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
 	if turtle.position then print ("Also, it lists a regular position of " .. vectorToString(turtle.position)) end
-	local currentSquare = {position=turtle.relativePos,G=0,H=turtle.relativePos:len()}
+	local currentSquare = {position=turtle.relativePos,G=0,H=(targetPosition-turtle.relativePos):len()}
 	currentSquare.score = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
 	openList = { } -- I guess this is a generic object, which has fields .position
@@ -249,13 +249,13 @@ function GetPath(targetPosition)
 		for pos,aSquare in pairs(adjacentSquares) do 
 			if not openList[pos] then -- Syntax?
 				-- Compute G, H, and F
-				ComputeSquare(aSquare, currentSquare)
+				ComputeSquare(aSquare, currentSquare, targetPosition)
 				-- Add for consideration in next step
 				openList[pos] = aSquare
 			else -- aSquare is already in the list, so it already has these params
 				if currentSquare.G+1 < aSquare.G then
 					-- Our path to aSquare is shorter, use our values
-					ComputeSquare(aSquare, currentSquare)
+					ComputeSquare(aSquare, currentSquare, targetPosition)
 				end
 			end
 		end
