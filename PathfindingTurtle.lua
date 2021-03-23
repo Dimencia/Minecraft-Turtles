@@ -158,9 +158,11 @@ end
 function LoadData()
 	local f = fs.open("PathData", r)
 	local allData = json.decode(f.readAll())
-	turtle.position = allData.position
-	turtle.orientation = allData.orientation
-	occupiedPositions = allData.occupiedPositions
+	if allData.position and allData.orientation and allData.occupiedPositions then
+		turtle.position = allData.position
+		turtle.orientation = allData.orientation
+		occupiedPositions = allData.occupiedPositions
+	end
 	f.close()
 end
 
