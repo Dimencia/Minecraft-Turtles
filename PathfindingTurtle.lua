@@ -15,11 +15,11 @@ local initialOrientation = vec3(1,0,0)
 local initialPosition = vec3(0,0,0)
 
 turtle.orientation = initialOrientation 
-turtle.position = initialPosition
+turtle.relativePos = initialPosition
 
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
-	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
+	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
@@ -29,8 +29,8 @@ function LoadData()
 	local f = fs.open("PathData", "r")
 	local allData = json.decode(f.readAll())
 	if allData and allData.position and allData.orientation and allData.occupiedPositions then
-		turtle.position = allData.position
-		turtle.orientation = allData.orientation
+		turtle.relativePos = vec3(allData.position)
+		turtle.orientation = vec3(allData.orientation)
 		occupiedPositions = allData.occupiedPositions
 	end
 	f.close()
@@ -53,9 +53,9 @@ local baseForward = turtle.forward
 turtle.forward = function()
 	detectBlocks()
 	if baseForward() then
-		local newPosition = turtle.position + turtle.orientation
-		print("Moved forward from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
-		turtle.position = newPosition
+		local newPosition = turtle.relativePos + turtle.orientation
+		print("Moved forward from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+		turtle.relativePos = newPosition
 		detectBlocks()
 		return true
 	end
@@ -66,9 +66,9 @@ local baseUp = turtle.up
 turtle.up = function()
 	detectBlocks()
 	if baseUp() then
-		local newPosition = turtle.position + vec3(0,1,0)
-		print("Moved up from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
-		turtle.position = newPosition
+		local newPosition = turtle.relativePos + vec3(0,1,0)
+		print("Moved up from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+		turtle.relativePos = newPosition
 		detectBlocks()
 		return true
 	end
@@ -79,9 +79,9 @@ local baseDown = turtle.down
 turtle.down = function()
 	detectBlocks()
 	if baseDown() then
-		local newPosition = turtle.position + vec3(0,-1,0)
-		print("Moved down from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
-		turtle.position = newPosition
+		local newPosition = turtle.relativePos + vec3(0,-1,0)
+		print("Moved down from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+		turtle.relativePos = newPosition
 		detectBlocks()
 		return true
 	end
@@ -129,8 +129,8 @@ function updateTurtleOrientationRight()
 end
 
 function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
-	print("Calculating turn from " .. vectorToString(turtle.position) .. " to " .. vectorToString(adjacentPosition))
-	local newOrientation = adjacentPosition-turtle.position
+	print("Calculating turn from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(adjacentPosition))
+	local newOrientation = adjacentPosition-turtle.relativePos
 	newOrientation.y = 0
 	-- Now determine how to get from current, to here
 	-- First, if it was y only, we're done
@@ -153,9 +153,9 @@ end
 
 function detectBlocks()
 	-- Detects all blocks and stores the data
-	if turtle.detect() then occupiedPositions[turtle.position+turtle.orientation] = true else occupiedPositions[turtle.position+turtle.orientation] = false end
-	if turtle.detectUp() then occupiedPositions[turtle.position+turtle.orientation+vec3(0,1,0)] = true else occupiedPositions[turtle.position+turtle.orientation+vec3(0,1,0)] = false end
-	if turtle.detectDown() then occupiedPositions[turtle.position+turtle.orientation+vec3(0,-1,0)] = true else occupiedPositions[turtle.position+turtle.orientation+vec3(0,-1,0)] = false end
+	if turtle.detect() then occupiedPositions[turtle.relativePos+turtle.orientation] = true else occupiedPositions[turtle.relativePos+turtle.orientation] = false end
+	if turtle.detectUp() then occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,1,0)] = true else occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,1,0)] = false end
+	if turtle.detectDown() then occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,-1,0)] = true else occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,-1,0)] = false end
 	SaveData()
 end
 			
@@ -216,7 +216,7 @@ local openList = {}
 local closedList = {}
 			
 function GetPath(targetPosition)
-	local currentSquare = {position=turtle.position,G=0,H=turtle.position:len()}
+	local currentSquare = {position=turtle.relativePos,G=0,H=turtle.relativePos:len()}
 	currentSquare.F = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
 	openList = { } -- I guess this is a generic object, which has fields .position
@@ -271,8 +271,8 @@ end
 
 function followPath(moveList)
 	for k,v in pairs(moveList) do
-		print("Performing move to adjacent square from " .. vectorToString(turtle.position) .. " to " .. vectorToString(v.position))
-		local targetVector = v.position - turtle.position
+		print("Performing move to adjacent square from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(v.position))
+		local targetVector = v.position - turtle.relativePos
 		local success
 		if targetVector.y ~= 0 then
 			-- Just go up or down
@@ -301,7 +301,7 @@ function followPath(moveList)
 			return
 		end
 	end
-	print("Path successfully followed, final position: " .. vectorToString(turtle.position))
+	print("Path successfully followed, final position: " .. vectorToString(turtle.relativePos))
 end
 
 
