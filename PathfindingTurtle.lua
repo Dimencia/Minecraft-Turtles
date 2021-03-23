@@ -21,11 +21,15 @@ end
 function getDisplayString(object)
 	local result = ""
 	if type(object) == "table" then
-		result = result .. "{"
-		for k,v in pairs(object) do
-			result = result .. getDisplayString(k) .. ":" .. getDisplayString(v)
+		if object.x and object.len then -- IDK how else to make sure it's a vec3
+			result = result .. vectorToString(object)
+		else
+			result = result .. "{"
+			for k,v in pairs(object) do
+				result = result .. getDisplayString(k) .. ":" .. getDisplayString(v)
+			end
+			result = result .. "}"
 		end
-		result = result .. "}"
 	elseif type(object) == "boolean" then
 		if object then result = result .. "true" else result = result .. "false" end
 	elseif object ~= nil then
@@ -56,11 +60,7 @@ end
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
 	local dataFile = fs.open("PathData", "w")
-	local stringOccupiedPositions = {}
-	for k,v in pairs(occupiedPositions) do
-		stringOccupiedPositions[vectorToString(k)] = v
-	end
-	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=stringOccupiedPositions}
+	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
@@ -80,12 +80,7 @@ function LoadData()
 			end
 		end
 		
-		
-		local stringOccupiedPositions = allData.occupiedPositions
-		occupiedPositions = {}
-		for k,v in pairs(stringOccupiedPositions) do
-			occupiedPositions[vec3(stringSplit(k,","))] = v
-		end
+		occupiedPositions = allData.occupiedPositions
 	end
 	f.close()
 end
@@ -213,9 +208,9 @@ end
 
 function detectBlocks()
 	-- Detects all blocks and stores the data
-	if turtle.detect() then occupiedPositions[turtle.relativePos+turtle.orientation] = true else occupiedPositions[turtle.relativePos+turtle.orientation] = false end
-	if turtle.detectUp() then occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,1,0)] = true else occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,1,0)] = false end
-	if turtle.detectDown() then occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,-1,0)] = true else occupiedPositions[turtle.relativePos+turtle.orientation+vec3(0,-1,0)] = false end
+	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation)] = turtle.detect()
+	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation+vec3(0,1,0))] = turtle.detectUp()
+	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation+vec3(0,-1,0))] = turtle.detectDown()
 	SaveData()
 end
 			
@@ -266,7 +261,7 @@ function getAdjacentWalkableSquares(currentSquare)
 				-- Positions like 1,0,1, -1,0,-1, etc are all invalid, at least one param must be 0, but not all of them
 				local targetPos = currentSquare.position + vec3(x,y,z)
 				
-				if not occupiedPositions[targetPos] then
+				if not occupiedPositions[vectorToString(targetPos)] then
 					-- THIS FUCKING CUNT keeps letting things through that are already on the occupied list somehow
 					-- I have no fucking clue how or why.  This is fucking stupid.
 					results[targetPos] = {position=targetPos} 
@@ -280,7 +275,7 @@ function getAdjacentWalkableSquares(currentSquare)
 	local z = 0
 	for y=-1,1,2 do
 		local targetPos = currentSquare.position + vec3(x,y,z)
-		if not occupiedPositions[targetPos] then 
+		if not occupiedPositions[vectorToString(targetPos)] then 
 			results[targetPos] = {position=targetPos} 
 		end
 	end
