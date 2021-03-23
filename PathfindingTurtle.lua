@@ -3,8 +3,8 @@
 -- Any movement or turning causes it to scan its environment and store data, allowing it to 'remember' where obstacles are
 			
 -- This is honestly doable.  If I need a refresher later: https://www.raywenderlich.com/3016-introduction-to-a-pathfinding
-if not fs.exists("vec3.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/vec3.lua", "vec3.lua")
-if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/dkjson.lua", "json.lua")	
+if not fs.exists("vec3.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/vec3.lua", "vec3.lua") end
+if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/dkjson.lua", "json.lua")	end
 	
 local vec3 = require("vec3")
 local json = require("json")
@@ -16,6 +16,25 @@ local initialPosition = vec3(0,0,0)
 
 turtle.orientation = initialOrientation -- TODO load from file
 turtle.position = initialPosition
+
+function SaveData()
+	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
+	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
+	local dataString = json.encode(allData)
+	dataFile.write(dataString)
+	dataFile.flush()
+end	
+
+function LoadData()
+	local f = fs.open("PathData", r)
+	local allData = json.decode(f.readAll())
+	if allData.position and allData.orientation and allData.occupiedPositions then
+		turtle.position = allData.position
+		turtle.orientation = allData.orientation
+		occupiedPositions = allData.occupiedPositions
+	end
+	f.close()
+end
 
 if fs.exists("PathData") then
 	LoadData() -- Load before opening our write handle, which will erase everything
@@ -147,26 +166,6 @@ function ComputeSquare(aSquare, currentSquare)
 	aSquare.score = aSquare.G + aSquare.H
 end
 	
-function SaveData()
-	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
-	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
-	local dataString = json.encode(allData)
-	dataFile.write(dataString)
-	dataFile.flush()
-end	
-
-function LoadData()
-	local f = fs.open("PathData", r)
-	local allData = json.decode(f.readAll())
-	if allData.position and allData.orientation and allData.occupiedPositions then
-		turtle.position = allData.position
-		turtle.orientation = allData.orientation
-		occupiedPositions = allData.occupiedPositions
-	end
-	f.close()
-end
-
-
 
 function lowestScoreSort(a,b)
 	return a.score ~= nil and b.score ~= nil and a.score < b.score
