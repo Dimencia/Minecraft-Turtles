@@ -167,8 +167,8 @@ function ComputeSquare(aSquare, currentSquare, targetPosition)
 end
 	
 
-function lowestScoreSort(a,b)
-	return a.score ~= nil and b.score ~= nil and a.score < b.score
+function lowestScoreSort(t,a,b)
+	return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
 end		
 
 function vectorToString(vec)
@@ -283,7 +283,7 @@ function GetPath(targetPosition)
 					ComputeSquare(aSquare, currentSquare, targetPosition)
 				end
 			end
-			print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
+			--print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
 		end
 		print(listLen(openList) .. " remaining entries in open list")
 		tickCount = tickCount + 1
