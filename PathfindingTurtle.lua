@@ -204,7 +204,7 @@ end
 
 function listLen(list)
 	local count = 0
-	for k,v in pairs list do
+	for k,v in pairs(list) do
 		if v ~= nil then count = count + 1 end
 	end
 	return count
@@ -223,6 +223,8 @@ function GetPath(targetPosition)
 	openList[currentSquare.position] = currentSquare -- This makes it easier to add/remove
 	-- Suppose they also have a .score, .G, and .H, and .parent
 	closedList = {}
+	
+	tickCount = 0
 	repeat 
 		-- Get the square with the lowest score
 		table.sort(openList,lowestScoreSort)
@@ -244,12 +246,12 @@ function GetPath(targetPosition)
 		
 		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
 		
-		for aSquare in ipairs(adjacentSquares) do 
-			if not openList[aSquare.position] then -- Syntax?
+		for pos,aSquare in pairs(adjacentSquares) do 
+			if not openList[pos] then -- Syntax?
 				-- Compute G, H, and F
 				ComputeSquare(aSquare, currentSquare)
 				-- Add for consideration in next step
-				openList[aSquare.position] = aSquare
+				openList[pos] = aSquare
 			else -- aSquare is already in the list, so it already has these params
 				if currentSquare.G+1 < aSquare.G then
 					-- Our path to aSquare is shorter, use our values
@@ -258,7 +260,11 @@ function GetPath(targetPosition)
 			end
 		end
 		print(listLen(openList) .. " remaining entries in open list")
-	until listLen(openList) == 0 -- lua syntax?
+		tickCount = tickCount + 1
+		if tickCount % 1000 == 0 then
+			coroutine.yield()
+		end
+	until listLen(openList) == 0 
 	
 	-- Okay so, find the last element in closedList, it was just added.  Or the first, due to insert?
 	-- Going to assume first
