@@ -244,6 +244,8 @@ function GetPath(targetPosition)
 			break
 		end
 		
+		print("Checking position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
+		
 		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
 		
 		for pos,aSquare in pairs(adjacentSquares) do 
@@ -252,15 +254,15 @@ function GetPath(targetPosition)
 				ComputeSquare(aSquare, currentSquare, targetPosition)
 				-- Add for consideration in next step
 				openList[pos] = aSquare
-			else -- aSquare is already in the list, so it already has these params
+			elseif openList[pos] then -- aSquare is already in the list, so it already has these params
 				if currentSquare.G+1 < aSquare.G then
 					-- Our path to aSquare is shorter, use our values
 					ComputeSquare(aSquare, currentSquare, targetPosition)
 				end
 			end
+			print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
 		end
 		print(listLen(openList) .. " remaining entries in open list")
-		print("Checking position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
 		tickCount = tickCount + 1
 		if tickCount % 1000 == 0 then
 			coroutine.yield()
