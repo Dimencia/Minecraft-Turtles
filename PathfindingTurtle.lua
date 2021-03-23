@@ -9,8 +9,29 @@ if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubuserconte
 local vec3 = require("vec3")
 local json = require("json")
 
+logFile = fs.open("Logfile")
+
+oldPrint = print
+print = function(params)
+	oldPrint(params)
+	logFile.writeLine(getDisplayString(params))
+	logFile.flush()
+end
+
+function getDisplayString(object)
+	local result = ""
+	if type(object) == "table" then
+		for k,v in pairs(object) do
+			result = result .. getDisplayString(v)
+		end
+	elseif object ~= nil
+		result = result .. object
+	else
+		result = result .. "nil"
+	end
+end
 	
-local occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
+occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
 local initialOrientation = vec3(1,0,0)
 local initialPosition = vec3(0,0,0)
 
@@ -23,8 +44,13 @@ orientationIndex = 1
 turtle.orientation = initialOrientation 
 turtle.relativePos = initialPosition
 
+function vectorToString(vec)
+	return vec.x .. "," .. vec.y .. "," .. vec.z
+end
+
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
+	local dataFile = fs.open("PathData", "w")
 	local stringOccupiedPositions = {}
 	for k,v in pairs(occupiedPositions) do
 		stringOccupiedPositions[vectorToString(k)] = v
@@ -33,6 +59,7 @@ function SaveData()
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
+	dataFile.close()
 end	
 
 function LoadData()
@@ -73,7 +100,6 @@ if fs.exists("PathData") then
 	LoadData() -- Load before opening our write handle, which will erase everything
 end
 
-dataFile = fs.open("PathData", "w")
 SaveData() -- Make sure it's not empty if we don't make it to the next tick
 
 local baseDig = turtle.dig
@@ -201,11 +227,6 @@ function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to s
 	return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
 end		
 
-function vectorToString(vec)
-	return vec.x .. "," .. vec.y .. "," .. vec.z
-end
-
-
 function spairs(t, order)
     -- collect the keys
     local keys = {}
@@ -235,10 +256,15 @@ function getAdjacentWalkableSquares(currentSquare)
 	for x=-1,1 do
 		for z=-1,1 do
 			local y = 0
-			if not (x == 0 and z == 0) and (x == 0 or z == 0) then
+			if not (x == 0 and z == 0) and (x == 0 or z == 0)  then
 				-- Positions like 1,0,1, -1,0,-1, etc are all invalid, at least one param must be 0, but not all of them
 				local targetPos = currentSquare.position + vec3(x,y,z)
-				results[targetPos] = {position=targetPos} 
+				
+				if not occupiedPositions[targetPos] then
+					-- THIS FUCKING CUNT keeps letting things through that are already on the occupied list somehow
+					-- I have no fucking clue how or why.  This is fucking stupid.
+					results[targetPos] = {position=targetPos} 
+				end
 			end
 		
 		end
@@ -362,7 +388,7 @@ function followPath(moveList)
 				-- Find the target...
 				print("Obstacle detected, calculating and following new path")
 				local lastTarget = nil
-				for k2, v2 in pairs(moveList) do
+				for k2, v2 in ipairs(moveList) do
 					lastTarget = v2
 				end
 				local newPath = GetPath(lastTarget.position)
@@ -376,6 +402,8 @@ end
 
 
 -- K after this is whatever we want it to do...
+turtle.select(1)
+turtle.refuel()
 
 -- For testing purposes, let's just have it move -15x and 1 Y (cuz I know the start point is down 1...)
 local targetVec = vec3(-15,1,0)
