@@ -21,7 +21,7 @@ end
 function getDisplayString(object)
 	local result = ""
 	if type(object) == "table" then
-		if object.x and object.len then -- IDK how else to make sure it's a vec3
+		if object.x then -- IDK how else to make sure it's a vec3
 			result = result .. vectorToString(object)
 		else
 			result = result .. "{"
@@ -102,13 +102,13 @@ end
 
 SaveData() -- Make sure it's not empty if we don't make it to the next tick
 
-local baseDig = turtle.dig
+baseDig = turtle.dig
 turtle.dig = function() -- We may have to pause a tick to wait for gravel to fall... 
 	baseDig()
 	detectBlocks() -- Check all occupied things after we dig
 end
 
-local baseForward = turtle.forward
+baseForward = turtle.forward
 turtle.forward = function()
 	detectBlocks()
 	if baseForward() then
@@ -121,7 +121,7 @@ turtle.forward = function()
 		return false
 end
 
-local baseUp = turtle.up
+baseUp = turtle.up
 turtle.up = function()
 	detectBlocks()
 	if baseUp() then
@@ -134,7 +134,7 @@ turtle.up = function()
 	return false
 end
 
-local baseDown = turtle.down
+baseDown = turtle.down
 turtle.down = function()
 	detectBlocks()
 	if baseDown() then
@@ -147,19 +147,19 @@ turtle.down = function()
 	return false
 end
 
-local baseTurnLeft = turtle.turnLeft
+baseTurnLeft = turtle.turnLeft
 turtle.turnLeft = function()
 	baseTurnLeft()
-	local oldOrientation = turtle.orientation
+	local oldOrientation = turtle.orientation:clone()
 	updateTurtleOrientationLeft()
 	print("Turned left from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
 	detectBlocks()
 end
 
-local baseTurnRight = turtle.turnRight
+baseTurnRight = turtle.turnRight
 turtle.turnRight = function()
 	baseTurnRight()
-	local oldOrientation = turtle.orientation
+	local oldOrientation = turtle.orientation:clone()
 	updateTurtleOrientationRight()
 	print("Turned right from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
 	detectBlocks()
@@ -360,7 +360,7 @@ function GetPath(targetPosition)
 		table.insert(finalMoves,1, curSquare)
 		curSquare = curSquare.parent
 	end
-	
+	print("Final Moves: ", finalMoves)
 	return finalMoves -- Will have to figure out how to parse these into instructions, but, it's a path.  The shortest one, even. 
 end
 
@@ -374,15 +374,15 @@ function followPath(moveList)
 				-- Just go up or down
 				if targetVector.y > 0 then
 					success = turtle.up()
-					if not success then occupiedPositions[v.position] = true end
+					if not success then occupiedPositions[vectorToString(v.position)] = true end
 				else
 					success = turtle.down()
-					if not success then occupiedPositions[v.position] = true end
+					if not success then occupiedPositions[vectorToString(v.position)] = true end
 				end
 			else
 				turnToAdjacent(v.position)
 				success = turtle.forward()
-				if not success then occupiedPositions[v.position] = true end
+				if not success then occupiedPositions[vectorToString(v.position)] = true end
 			end
 			
 			if not success then -- We were blocked for some reason, re-pathfind
