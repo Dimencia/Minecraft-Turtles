@@ -11,12 +11,20 @@ json = require("json")
 
 logFile = fs.open("Logfile", "w")
 
-oldPrint = print
-print = function(params)
+-- First, check if we've already overwritten these funcs
+
+
+function newPrint(params)
 	oldPrint(getDisplayString(params))
 	logFile.writeLine(getDisplayString(params))
 	logFile.flush()
 end
+if not turtle.methodsOverwritten then
+	oldPrint = print
+	print = newPrint
+end
+
+
 
 function getDisplayString(object)
 	local result = ""
@@ -76,7 +84,7 @@ function LoadData()
 		turtle.relativePos = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
 		for k,v in ipairs(orientations) do
-			if vecotrToString(v) == vectorToString(turtle.orientation) then
+			if vectorToString(v) == vectorToString(turtle.orientation) then
 				orientationIndex = k
 				break
 			end
@@ -104,68 +112,71 @@ end
 
 SaveData() -- Make sure it's not empty if we don't make it to the next tick
 
-baseDig = turtle.dig
-turtle.dig = function() -- We may have to pause a tick to wait for gravel to fall... 
-	baseDig()
-	detectBlocks() -- Check all occupied things after we dig
-end
-
-baseForward = turtle.forward
-turtle.forward = function()
-	detectBlocks()
-	if baseForward() then
-		local newPosition = turtle.relativePos + turtle.orientation
-		print("Moved forward from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-		turtle.relativePos = newPosition
-		detectBlocks()
-		return true
+if not turtle.methodsOverwritten then
+	baseDig = turtle.dig
+	turtle.dig = function() -- We may have to pause a tick to wait for gravel to fall... 
+		baseDig()
+		detectBlocks() -- Check all occupied things after we dig
 	end
+
+	baseForward = turtle.forward
+	turtle.forward = function()
+		detectBlocks()
+		if baseForward() then
+			local newPosition = turtle.relativePos + turtle.orientation
+			print("Moved forward from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+			turtle.relativePos = newPosition
+			detectBlocks()
+			return true
+		end
+			return false
+	end
+
+	baseUp = turtle.up
+	turtle.up = function()
+		detectBlocks()
+		if baseUp() then
+			local newPosition = turtle.relativePos + vec3(0,1,0)
+			print("Moved up from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+			turtle.relativePos = newPosition
+			detectBlocks()
+			return true
+		end
 		return false
-end
-
-baseUp = turtle.up
-turtle.up = function()
-	detectBlocks()
-	if baseUp() then
-		local newPosition = turtle.relativePos + vec3(0,1,0)
-		print("Moved up from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-		turtle.relativePos = newPosition
-		detectBlocks()
-		return true
 	end
-	return false
-end
 
-baseDown = turtle.down
-turtle.down = function()
-	detectBlocks()
-	if baseDown() then
-		local newPosition = turtle.relativePos + vec3(0,-1,0)
-		print("Moved down from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-		turtle.relativePos = newPosition
+	baseDown = turtle.down
+	turtle.down = function()
 		detectBlocks()
-		return true
+		if baseDown() then
+			local newPosition = turtle.relativePos + vec3(0,-1,0)
+			print("Moved down from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
+			turtle.relativePos = newPosition
+			detectBlocks()
+			return true
+		end
+		return false
 	end
-	return false
-end
 
-baseTurnLeft = turtle.turnLeft
-turtle.turnLeft = function()
-	baseTurnLeft()
-	local oldOrientation = turtle.orientation:clone()
-	updateTurtleOrientationLeft()
-	print("Turned left from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
-	detectBlocks()
-end
+	baseTurnLeft = turtle.turnLeft
+	turtle.turnLeft = function()
+		baseTurnLeft()
+		local oldOrientation = turtle.orientation:clone()
+		updateTurtleOrientationLeft()
+		print("Turned left from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
+		detectBlocks()
+	end
 
-baseTurnRight = turtle.turnRight
-turtle.turnRight = function()
-	baseTurnRight()
-	local oldOrientation = turtle.orientation:clone()
-	updateTurtleOrientationRight()
-	print("Turned right from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
-	detectBlocks()
+	baseTurnRight = turtle.turnRight
+	turtle.turnRight = function()
+		baseTurnRight()
+		local oldOrientation = turtle.orientation:clone()
+		updateTurtleOrientationRight()
+		print("Turned right from " .. vectorToString(oldOrientation) .. " to " .. vectorToString(turtle.orientation))
+		detectBlocks()
+	end
 end
+turtle.methodsOverwritten = true
 
 
 function updateTurtleOrientationLeft()
@@ -242,7 +253,7 @@ function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to s
 	if t[a].score == t[b].score then
 		return t[a].count > t[b].count
 	else
-		return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
+		return t[a].score < t[b].score
 	end
 end		
 
@@ -423,12 +434,23 @@ end
 
 
 -- K after this is whatever we want it to do...
-turtle.select(1)
-turtle.refuel()
 
--- For testing purposes, let's just have it move -15x and 1 Y (cuz I know the start point is down 1...)
-local targetVec = vec3(-15,1,0)
-print("Getting path to target")
-local path = GetPath(targetVec)
--- And, follow the path.  Or try.
-followPath(path)
+-- Alright, let's call this a training routine.
+-- It should start facing the 'home' chest, which contains coal or fuel, and that's 0,0,0
+
+-- Note that the chest ends up being 1,0,0, when we want to turn to face it while standing at 0,0,0
+repeat
+	turnToAdjacent(vec3(1,0,0))
+	turtle.select(1)
+	turtle.suck()
+	turtle.refuel()
+	-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
+	local target = vec3(math.random(0,16),math.random(0,16),math.random(0,16))
+	print("Getting path to target")
+	local path = GetPath(targetVec)
+	followPath(path)
+	print("Returning to base")
+	target = vec3()
+	path = GetPath(targetVec)
+	followPath(path)
+until 1 == 0
