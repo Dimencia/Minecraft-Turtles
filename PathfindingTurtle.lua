@@ -332,7 +332,7 @@ function GetPath(targetPosition)
 	openList = { } -- I guess this is a generic object, which has fields .position
 	openList[vectorToString(currentSquare.position)] = currentSquare -- This makes it easier to add/remove
 	-- Suppose they also have a .score, .G, and .H, and .parent
-	--closedList = {}
+	closedList = {}
 	
 	tickCount = 1
 	
@@ -346,7 +346,7 @@ function GetPath(targetPosition)
 		end
 		
 		-- Add this to the closed list, kind of assuming we're going to move there.  Sort of.  Remove from open.
-		--closedList[vectorToString(currentSquare.position)] = currentSquare
+		closedList[vectorToString(currentSquare.position)] = true
 		-- Skip the closed list, we never really use it.
 		openList[vectorToString(currentSquare.position)] = nil -- Remove from open list
 		
@@ -359,16 +359,18 @@ function GetPath(targetPosition)
 		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
 		
 		for pos,aSquare in pairs(adjacentSquares) do 
-			if not openList[vectorToString(pos)] then -- Syntax?
-				-- Compute G, H, and F
-				ComputeSquare(aSquare, currentSquare, targetPosition)
-				-- Add for consideration in next step
-				openList[vectorToString(pos)] = aSquare
-			elseif openList[vectorToString(pos)] then -- aSquare is already in the list, so it already has these params
-			    aSquare = openList[vectorToString(pos)]
-				if currentSquare.G+1 < aSquare.G then
-					-- Our path to aSquare is shorter, use our values
+			if not closedList[vectorToString(pos)] then
+				if not openList[vectorToString(pos)] then 
+					-- Compute G, H, and F
 					ComputeSquare(aSquare, currentSquare, targetPosition)
+					-- Add for consideration in next step
+					openList[vectorToString(pos)] = aSquare
+				elseif openList[vectorToString(pos)] then -- aSquare is already in the list, so it already has these params
+					aSquare = openList[vectorToString(pos)]
+					if currentSquare.G+1 < aSquare.G then
+						-- Our path to aSquare is shorter, use our values
+						ComputeSquare(aSquare, currentSquare, targetPosition)
+					end
 				end
 			end
 			--print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
@@ -435,6 +437,19 @@ end
 
 -- K after this is whatever we want it to do...
 
+args = {...}
+-- So, let's do some command line stuff.  First, an argument that would allow you to change the home position
+-- The provided new coords must be relative to the previous home position
+-- It then edits all occupiedPositions to match (backing them up first, just in case)
+-- Though it should really just be simply... adding newPos, which is a translation vector, to each position.  Easy enough.  
+-- (Though for now let's just get it going and training, and we'll jam a bunch of coal in the box)
+
+-- So, leave that as a TODO
+
+-- The other TODO is to speed and clean it up.  Vectors should be able to equal eachother, per the vector.__eq(a,b), when x=x,y=y,z=z.  But we aren't seeing that. 
+
+
+
 -- Alright, let's call this a training routine.
 -- It should start facing the 'home' chest, which contains coal or fuel, and that's 0,0,0
 
@@ -447,10 +462,10 @@ repeat
 	-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
 	local target = vec3(math.random(0,16),math.random(0,16),math.random(0,16))
 	print("Getting path to target")
-	local path = GetPath(targetVec)
+	local path = GetPath(target)
 	followPath(path)
 	print("Returning to base")
 	target = vec3()
-	path = GetPath(targetVec)
+	path = GetPath(target)
 	followPath(path)
 until 1 == 0
