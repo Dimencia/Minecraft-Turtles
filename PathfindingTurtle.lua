@@ -6,8 +6,8 @@
 if not fs.exists("vec3.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/vec3.lua", "vec3.lua") end
 if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/dkjson.lua", "json.lua")	end
 	
-local vec3 = require("vec3")
-local json = require("json")
+vec3 = require("vec3")
+json = require("json")
 
 logFile = fs.open("Logfile", "w")
 
@@ -261,7 +261,6 @@ end
 			
 function getAdjacentWalkableSquares(currentSquare)
 	local results = {}
-	print("Occupied Positions: ", occupiedPositions)
 	for x=-1,1 do
 		for z=-1,1 do
 			local y = 0
@@ -270,6 +269,7 @@ function getAdjacentWalkableSquares(currentSquare)
 				local targetPos = currentSquare.position + vec3(x,y,z)
 				
 				if not occupiedPositions[vectorToString(targetPos)] then
+				    print(vectorToString(targetPos), " Is a fucking cunt and not on the occupied list apparently")
 					-- THIS FUCKING CUNT keeps letting things through that are already on the occupied list somehow
 					-- I have no fucking clue how or why.  This is fucking stupid.
 					results[targetPos] = {position=targetPos} 
@@ -313,7 +313,7 @@ function GetPath(targetPosition)
 	-- Suppose they also have a .score, .G, and .H, and .parent
 	closedList = {}
 	
-	tickCount = 0
+	tickCount = 1
 	
 	local finalMove = nil
 	repeat 
@@ -355,7 +355,10 @@ function GetPath(targetPosition)
 		end
 		print(listLen(openList) .. " remaining entries in open list")
 		tickCount = tickCount + 1
-		--coroutine.yield()
+		if tickCount % 1000 == 0 then
+		    tickCount = 1
+			sleep(0.1)
+		end
 		
 	until listLen(openList) == 0 
 	
@@ -365,7 +368,7 @@ function GetPath(targetPosition)
 	-- Each one gets inserted in front of the previous one
 	local finalMoves = {}
 	while curSquare ~= nil do
-		table.insert(finalMoves, curSquare, 1)
+		table.insert(finalMoves, 1, curSquare)
 		curSquare = curSquare.parent
 	end
 	print("Final Moves: ", finalMoves)
