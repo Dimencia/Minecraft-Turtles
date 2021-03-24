@@ -217,8 +217,8 @@ end
 function detectBlocks()
 	-- Detects all blocks and stores the data
 	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation)] = turtle.detect()
-	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation+vec3(0,1,0))] = turtle.detectUp()
-	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation+vec3(0,-1,0))] = turtle.detectDown()
+	occupiedPositions[vectorToString(turtle.relativePos+vec3(0,1,0))] = turtle.detectUp()
+	occupiedPositions[vectorToString(turtle.relativePos+vec3(0,-1,0))] = turtle.detectDown()
 	SaveData()
 end
 			
@@ -269,9 +269,6 @@ function getAdjacentWalkableSquares(currentSquare)
 				local targetPos = currentSquare.position + vec3(x,y,z)
 				
 				if not occupiedPositions[vectorToString(targetPos)] then
-				    print(vectorToString(targetPos), " Is a fucking cunt and not on the occupied list apparently")
-					-- THIS FUCKING CUNT keeps letting things through that are already on the occupied list somehow
-					-- I have no fucking clue how or why.  This is fucking stupid.
 					results[targetPos] = {position=targetPos} 
 				end
 			end
@@ -309,7 +306,7 @@ function GetPath(targetPosition)
 	currentSquare.score = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
 	openList = { } -- I guess this is a generic object, which has fields .position
-	openList[currentSquare.position] = currentSquare -- This makes it easier to add/remove
+	openList[vectorToString(currentSquare.position)] = currentSquare -- This makes it easier to add/remove
 	-- Suppose they also have a .score, .G, and .H, and .parent
 	closedList = {}
 	
@@ -326,8 +323,8 @@ function GetPath(targetPosition)
 		
 		
 		-- Add this to the closed list, kind of assuming we're going to move there.  Sort of.  Remove from open.
-		closedList[currentSquare.position] = currentSquare
-		openList[currentSquare.position] = nil -- Remove from open list
+		closedList[vectorToString(currentSquare.position)] = currentSquare
+		openList[vectorToString(currentSquare.position)] = nil -- Remove from open list
 		
 		if currentSquare.position == targetPosition then
 			-- We found the path target and put it in the list, we're done. 
@@ -340,12 +337,12 @@ function GetPath(targetPosition)
 		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
 		
 		for pos,aSquare in pairs(adjacentSquares) do 
-			if not openList[pos] then -- Syntax?
+			if not openList[vectorToString(pos)] then -- Syntax?
 				-- Compute G, H, and F
 				ComputeSquare(aSquare, currentSquare, targetPosition)
 				-- Add for consideration in next step
-				openList[pos] = aSquare
-			elseif openList[pos] then -- aSquare is already in the list, so it already has these params
+				openList[vectorToString(pos)] = aSquare
+			elseif openList[vectorToString(pos)] then -- aSquare is already in the list, so it already has these params
 				if currentSquare.G+1 < aSquare.G then
 					-- Our path to aSquare is shorter, use our values
 					ComputeSquare(aSquare, currentSquare, targetPosition)
@@ -371,7 +368,6 @@ function GetPath(targetPosition)
 		table.insert(finalMoves, 1, curSquare)
 		curSquare = curSquare.parent
 	end
-	print("Final Moves: ", finalMoves)
 	return finalMoves -- Will have to figure out how to parse these into instructions, but, it's a path.  The shortest one, even. 
 end
 
