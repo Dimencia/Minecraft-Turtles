@@ -20,7 +20,9 @@ end
 
 function getDisplayString(object)
 	local result = ""
-	if type(object) == "table" then
+	if type(object) == "string" then
+		result = result .. object
+	elseif type(object) == "table" then
 		if object.x then -- IDK how else to make sure it's a vec3
 			result = result .. vectorToString(object)
 		else
@@ -168,7 +170,7 @@ end
 
 function updateTurtleOrientationLeft()
 	
-	orientationIndex = orientationIndex -1
+	orientationIndex = orientationIndex-1
 	if orientationIndex < 1 then
 		orientationIndex = #orientations
 	end
@@ -176,7 +178,7 @@ function updateTurtleOrientationLeft()
 end
 
 function updateTurtleOrientationRight()
-	orientationIndex = orientationIndex +1
+	orientationIndex = orientationIndex+1
 	if orientationIndex > #orientations then
 		orientationIndex = 1
 	end
@@ -190,20 +192,26 @@ function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones...
 	-- Now determine how to get from current, to here
 	-- First, if it was y only, we're done
 	if newOrientation == vec3() or newOrientation == turtle.orientation then return true end
-	-- There's only like 4 cases here, I guess I can do them manually
-	if newOrientation.z == turtle.orientation.x and newOrientation.x == turtle.orientation.z then
-		-- Unsure if the and is necessary or meaningful
-		-- But this means it's just to the right
-		turtle.turnRight()
-		return true
-	elseif newOrientation.z == -turtle.orientation.x then
-		turtle.turnLeft()
-		return true
-	else -- It doesn't matter, we do a 180
-		turtle.turnRight()
-		turtle.turnRight()
-		return true
+	
+	-- Then iteration through orientations forward, if it's <=2 to the target we can go right, otherwise left
+	for i=1,4 do
+		local t = orientationIndex + i
+		if t > #orientations then t = t - #orientations end
+		if orientations[t] == newOrientation then
+			if i < 2 then
+				turtle.turnRight()
+				return true
+			elseif i == 2 then
+				turtle.turnRight()
+				turtle.turnRight()
+				return true
+			else
+				turtle.turnLeft()
+				return true
+			end
+		end
 	end
+	return false
 end
 
 function detectBlocks()
@@ -357,7 +365,7 @@ function GetPath(targetPosition)
 	-- Each one gets inserted in front of the previous one
 	local finalMoves = {}
 	while curSquare ~= nil do
-		table.insert(finalMoves,1, curSquare)
+		table.insert(finalMoves, curSquare, 1)
 		curSquare = curSquare.parent
 	end
 	print("Final Moves: ", finalMoves)
