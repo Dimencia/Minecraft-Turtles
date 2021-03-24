@@ -5,25 +5,34 @@
 -- This is honestly doable.  If I need a refresher later: https://www.raywenderlich.com/3016-introduction-to-a-pathfinding
 if not fs.exists("vec3.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/vec3.lua", "vec3.lua") end
 if not fs.exists("json.lua") then shell.run("wget", "https://raw.githubusercontent.com/Dimencia/Minecraft-Turtles/main/dkjson.lua", "json.lua")	end
+if not fs.exists("heap.lua") then shell.run("wget", "https://gist.githubusercontent.com/H2NCH2COOH/1f929775db0a355ca6b6088a4662fe95/raw/1ccc4fc1d99ee6943fc66475f3feac6de8c83c31/heap.lua", "heap.lua") end	
 	
 vec3 = require("vec3")
 json = require("json")
+minheap = require("heap")
 
 logFile = fs.open("Logfile", "w")
 
--- First, check if we've already overwritten these funcs
 
-
-function newPrint(params)
-	oldPrint(getDisplayString(params))
-	logFile.writeLine(getDisplayString(params))
+function newPrint(...)
+    local result = ""
+	for k,v in pairs(arg) do
+	    if k ~= "n" then
+			result = result .. getDisplayString(v) .. " "
+		end
+	end
+	oldPrint(result)
+	logFile.writeLine(result)
 	logFile.flush()
 end
-if not turtle.methodsOverwritten then
-	oldPrint = print
+--if not turtle.methodsOverwritten then -- Unsure if turtle.methodsOverwritten doesn't persist, or if print resets itself, something is wrong
+	oldPrint = print -- If you run it, then terminate and run it again, it didn't log anymore.  Guess we have to do this part every time
 	print = newPrint
-end
+--end
 
+if turtle.methodsOverwritten then
+	print("Methods already overwritten, skipping them")
+end
 
 
 function getDisplayString(object)
@@ -34,11 +43,9 @@ function getDisplayString(object)
 		if object.x then -- IDK how else to make sure it's a vec3
 			result = result .. vectorToString(object)
 		else
-			result = result .. "{"
 			for k,v in pairs(object) do
-				result = result .. getDisplayString(k) .. ":" .. getDisplayString(v)
+				result = result .. getDisplayString(k) .. ":" .. getDisplayString(v) .. " "
 			end
-			result = result .. "}"
 		end
 	elseif type(object) == "boolean" then
 		if object then result = result .. "true" else result = result .. "false" end
@@ -60,8 +67,33 @@ orientations = { vec3(1,0,0),
 				 vec3(0,0,-1)} -- Where going higher in the list is turning right
 orientationIndex = 1
 
+directions = { "east","south","west","north"} -- In the same order as orientations so orientationIndex can still be used
+-- This could get weird because the occupiedPositions might be in reference to the wrong x or z sign
+-- So for example, we were pointed north, but gave it the vector for east
+-- So when I went 'negative x' in the relative implementation, I was really going positive z
+-- so anything with coords of like, 10,0,-2  , is actually -2,0,-10
+-- Which, seems like I can do newOrientation-oldOrientation and multiply all coords by that
+-- But, that fails when it was an opposite direction.  
+-- Which we can test for but it's weird that there's an edge case, is there not a better way?  Is this wrong in other cases?
+-- I mean it's only 3 cases.  Say I was pointed south instead, then my 'negative x' was negative z, but my positive x should be backwards and isn't
+
+-- So what are our cases?
+-- If it went from north to south, reverse all X and Z
+-- If it went from east to west, reverse all X and Z...
+-- If it went from initialOrientation of east, and they tell us that's actually north, swap Z and X, and negate Z
+-- If it went from east to south, swap Z and X
+-- This is hard.  Do it later.  These are unused so far, we do everything relative to our starting orientation
+
+adjacentVectors = { vec3(1,0,0),
+                    vec3(0,1,0),
+					vec3(0,0,1),
+					vec3(-1,0,0),
+					vec3(0,-1,0),
+					vec3(0,0,-1)} -- When looking for adjacents, we can iterate over this and add it to the position
+
 turtle.orientation = initialOrientation 
-turtle.relativePos = initialPosition
+turtle.position = initialPosition
+turtle.home = initialPosition
 
 function vectorToString(vec)
 	return vec.x .. "," .. vec.y .. "," .. vec.z
@@ -70,7 +102,7 @@ end
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
 	local dataFile = fs.open("PathData", "w")
-	local allData = {position=turtle.relativePos, orientation=turtle.orientation, occupiedPositions=occupiedPositions}
+	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=occupiedPositions, home=turtle.home}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
@@ -81,7 +113,7 @@ function LoadData()
 	local f = fs.open("PathData", "r")
 	local allData = json.decode(f.readAll())
 	if allData and allData.position and allData.orientation and allData.occupiedPositions then
-		turtle.relativePos = vec3(allData.position)
+		turtle.position = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
 		for k,v in ipairs(orientations) do
 			if vectorToString(v) == vectorToString(turtle.orientation) then
@@ -89,7 +121,9 @@ function LoadData()
 				break
 			end
 		end
-		
+		if allData.home then
+			turtle.home = vec3(allData.home)
+		end
 		occupiedPositions = allData.occupiedPositions
 	end
 	f.close()
@@ -104,6 +138,13 @@ function stringSplit (inputstr, sep)
                 table.insert(t, str)
         end
         return t
+end
+
+function hasAnyElements(list)
+	for k,v in pairs(list) do
+		return true
+	end
+	return false
 end
 
 if fs.exists("PathData") then
@@ -123,9 +164,9 @@ if not turtle.methodsOverwritten then
 	turtle.forward = function()
 		detectBlocks()
 		if baseForward() then
-			local newPosition = turtle.relativePos + turtle.orientation
-			print("Moved forward from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-			turtle.relativePos = newPosition
+			local newPosition = turtle.position + turtle.orientation
+			print("Moved forward from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
+			turtle.position = newPosition
 			detectBlocks()
 			return true
 		end
@@ -136,9 +177,9 @@ if not turtle.methodsOverwritten then
 	turtle.up = function()
 		detectBlocks()
 		if baseUp() then
-			local newPosition = turtle.relativePos + vec3(0,1,0)
-			print("Moved up from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-			turtle.relativePos = newPosition
+			local newPosition = turtle.position + vec3(0,1,0)
+			print("Moved up from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
+			turtle.position = newPosition
 			detectBlocks()
 			return true
 		end
@@ -149,9 +190,9 @@ if not turtle.methodsOverwritten then
 	turtle.down = function()
 		detectBlocks()
 		if baseDown() then
-			local newPosition = turtle.relativePos + vec3(0,-1,0)
-			print("Moved down from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(newPosition))
-			turtle.relativePos = newPosition
+			local newPosition = turtle.position + vec3(0,-1,0)
+			print("Moved down from " .. vectorToString(turtle.position) .. " to " .. vectorToString(newPosition))
+			turtle.position = newPosition
 			detectBlocks()
 			return true
 		end
@@ -196,9 +237,14 @@ function updateTurtleOrientationRight()
 	turtle.orientation = orientations[orientationIndex]
 end
 
+
+-- 
+-- Pathfinding Stuff Below
+--
+
 function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
-	print("Calculating turn from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(adjacentPosition))
-	local newOrientation = adjacentPosition-turtle.relativePos
+	print("Calculating turn from " .. vectorToString(turtle.position) .. " to " .. vectorToString(adjacentPosition))
+	local newOrientation = adjacentPosition-turtle.position
 	newOrientation.y = 0
 	-- Now determine how to get from current, to here
 	-- First, if it was y only, we're done
@@ -227,127 +273,52 @@ end
 
 function detectBlocks()
 	-- Detects all blocks and stores the data
-	occupiedPositions[vectorToString(turtle.relativePos+turtle.orientation)] = turtle.detect()
-	occupiedPositions[vectorToString(turtle.relativePos+vec3(0,1,0))] = turtle.detectUp()
-	occupiedPositions[vectorToString(turtle.relativePos+vec3(0,-1,0))] = turtle.detectDown()
+	occupiedPositions[vectorToString(turtle.position+turtle.orientation)] = turtle.detect()
+	occupiedPositions[vectorToString(turtle.position+vec3(0,1,0))] = turtle.detectUp()
+	occupiedPositions[vectorToString(turtle.position+vec3(0,-1,0))] = turtle.detectDown()
 	SaveData()
 end
 			
 function ComputeSquare(aSquare, currentSquare, targetPosition)
 	aSquare.parent = currentSquare
 	aSquare.G = currentSquare.G+1
-	aSquare.H = (targetPosition-aSquare.position):len()
+	aSquare.H = (targetPosition-aSquare.position):len()*1.5
 	aSquare.score = aSquare.G + aSquare.H
-	aSquare.count = pathCount
-	pathCount = pathCount + 1
 end
-	
-
-function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to sort the keys so we can iterate properly
-    -- And we sort the keys based on the values in the table t
-	-- So actually, we should be more careful here.  We want it to finish a branch and try it
-	-- So on ties, which are very common, it should prioritize the most recently added one
-	-- Which is hard to judge.  But at least the most recently added 6, which would be the ones with the highest G
-	
-	-- So I've added a count param that we increment everytime we recalculate
-	if t[a].score == t[b].score then
-		return t[a].count > t[b].count
-	else
-		return t[a].score < t[b].score
-	end
-end		
-
-function spairs(t, order)
-    -- collect the keys
-    local keys = {}
-    for k in pairs(t) do keys[#keys+1] = k end
-
-    -- if order function given, sort by it by passing the table and keys a, b,
-    -- otherwise just sort the keys 
-    if order then
-        table.sort(keys, function(a,b) return order(t, a, b) end)
-    else
-        table.sort(keys)
-    end
-
-    -- return the iterator function
-    local i = 0
-    return function()
-        i = i + 1
-        if keys[i] then
-            return keys[i], t[keys[i]]
-        end
-    end
-end
-
 			
 function getAdjacentWalkableSquares(currentSquare)
 	local results = {}
-	for x=-1,1 do
-		for z=-1,1 do
-			local y = 0
-			if not (x == 0 and z == 0) and (x == 0 or z == 0)  then
-				-- Positions like 1,0,1, -1,0,-1, etc are all invalid, at least one param must be 0, but not all of them
-				local targetPos = currentSquare.position + vec3(x,y,z)
-				
-				if not occupiedPositions[vectorToString(targetPos)] then
-					results[targetPos] = {position=targetPos} 
-				end
-			end
-		
+	for k,v in pairs(adjacentVectors) do
+		local targetVec = currentSquare.position + v
+		if not occupiedPositions[vectorToString(targetVec)] then -- I am unsure that this works, at least not reliably, it's weird
+			results[targetVec] = {position=targetVec}
 		end
 	end
-	-- Y is handled seperately, since x and z must both be 0 for y of -1 and 1
-	local x = 0
-	local z = 0
-	for y=-1,1,2 do
-		local targetPos = currentSquare.position + vec3(x,y,z)
-		if not occupiedPositions[vectorToString(targetPos)] then 
-			results[targetPos] = {position=targetPos} 
-		end
-	end
-	
 	return results
 end
 
-function listLen(list)
-	local count = 0
-	for k,v in pairs(list) do
-		if v ~= nil then count = count + 1 end
-	end
-	return count
-end
-
-openList = {}
-closedList = {}
-pathCount = 1
 			
 function GetPath(targetPosition)
-    print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
-	if turtle.position then print ("Also, it lists a regular position of " .. vectorToString(turtle.position)) end
-	local currentSquare = {position=turtle.relativePos,G=0,H=(targetPosition-turtle.relativePos):len(),count = 0}
+    print("Getting path for turtle position " .. vectorToString(turtle.position))
+	local currentSquare = {position=turtle.position,G=0,H=(targetPosition-turtle.position):len()*1.5}
 	currentSquare.score = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
-	pathCount = 1
-	openList = { } -- I guess this is a generic object, which has fields .position
+	local openList = { } -- I guess this is a generic object, which has fields .position
 	openList[vectorToString(currentSquare.position)] = currentSquare -- This makes it easier to add/remove
+	local openHeap = minheap.new()
+	openHeap:push(currentSquare,currentSquare.score)
 	-- Suppose they also have a .score, .G, and .H, and .parent
-	closedList = {}
+	local closedList = {}
 	
-	tickCount = 1
+	local tickCount = 1
 	
 	local finalMove = nil
 	repeat 
 		-- Get the square with the lowest score
-		local currentSquare
-		for k,v in spairs(openList,lowestScoreSort) do -- I have no idea how else to do this
-			currentSquare = v
-			break
-		end
+		local currentSquare = openHeap:pop()
 		
-		-- Add this to the closed list, kind of assuming we're going to move there.  Sort of.  Remove from open.
+		-- Add this to the closed list, no longer consider it for future moves
 		closedList[vectorToString(currentSquare.position)] = true
-		-- Skip the closed list, we never really use it.
 		openList[vectorToString(currentSquare.position)] = nil -- Remove from open list
 		
 		if currentSquare.position == targetPosition then
@@ -356,52 +327,51 @@ function GetPath(targetPosition)
 			break
 		end
 		
-		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
-		
+		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- Should never return occupied squares
+		-- Returns us a list where the keys are positions, and values just have a position field.  We add more fields to the values
 		for pos,aSquare in pairs(adjacentSquares) do 
-			if not closedList[vectorToString(pos)] then
+			if not closedList[vectorToString(pos)] then -- Using vectors as keys doesn't work right, have to convert to string
 				if not openList[vectorToString(pos)] then 
-					-- Compute G, H, and F
+					-- Compute G, H, and F, and set them on the square
 					ComputeSquare(aSquare, currentSquare, targetPosition)
 					-- Add for consideration in next step
 					openList[vectorToString(pos)] = aSquare
+					openHeap:push(aSquare,aSquare.score)
 				elseif openList[vectorToString(pos)] then -- aSquare is already in the list, so it already has these params
-					aSquare = openList[vectorToString(pos)]
+					aSquare = openList[vectorToString(pos)] -- Use the existing object
 					if currentSquare.G+1 < aSquare.G then
-						-- Our path to aSquare is shorter, use our values
+						-- Our path to aSquare is shorter, use our values, replaced into the object - which is already in the heap and list
 						ComputeSquare(aSquare, currentSquare, targetPosition)
 					end
 				end
 			end
-			--print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
 		end
-		
 		tickCount = tickCount + 1
-		if tickCount % 100 == 0 then
-			print("Checking 100th position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
+		if tickCount % 1000 == 0 then
+			print("Checking 1000th position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
 			sleep(0.1)
 		end
 		
-	until listLen(openList) == 0 
+	until not hasAnyElements(openList) or currentSquare.score > (currentSquare.position-targetPosition):len()*32
+	-- We'll go up to 32 blocks out of the way, per 1 block away in straight-line space
 	
-	-- Okay so, find the last element in closedList, it was just added.  Or the first, due to insert?
-	-- Going to assume first
-	local curSquare = finalMove
+	
+	local curSquare = finalMove -- We set this above when we found it, start at the end
 	-- Each one gets inserted in front of the previous one
 	local finalMoves = {}
 	while curSquare ~= nil do
 		table.insert(finalMoves, 1, curSquare)
 		curSquare = curSquare.parent
 	end
-	return finalMoves -- Will have to figure out how to parse these into instructions, but, it's a path.  The shortest one, even. 
+	return finalMoves
 end
 
 function followPath(moveList)
 	for k,v in ipairs(moveList) do
-		print("Performing move to adjacent square from " .. vectorToString(turtle.relativePos) .. " to " .. vectorToString(v.position))
-		local targetVector = v.position - turtle.relativePos
+		print("Performing move to adjacent square from " .. vectorToString(turtle.position) .. " to " .. vectorToString(v.position))
+		local targetVector = v.position - turtle.position
 		local success
-		if v.position ~= turtle.relativePos then
+		if v.position ~= turtle.position then
 			if targetVector.y ~= 0 then
 				-- Just go up or down
 				if targetVector.y > 0 then
@@ -420,7 +390,10 @@ function followPath(moveList)
 			if not success then -- We were blocked for some reason, re-pathfind
 				-- Find the target...
 				print("Obstacle detected, calculating and following new path")
-				print("Occupied Positions: ", occupiedPositions)
+				--print("Occupied Positions: ", occupiedPositions)
+				-- SO, this is really weird and really annoying.
+				-- If this happens, we seem to often path back to the same spot, even though it's occupied
+				-- But only sometimes, not always, it's wild.  
 				local lastTarget = nil
 				for k2, v2 in ipairs(moveList) do
 					lastTarget = v2
@@ -431,41 +404,78 @@ function followPath(moveList)
 			end
 		end
 	end
-	print("Path successfully followed, final position: " .. vectorToString(turtle.relativePos))
+	print("Path successfully followed, final position: " .. vectorToString(turtle.position))
 end
 
+local arg = {...}
+
+
+
+if arg[1] then
+	print(arg)
+	if arg[1] == "reset" then
+		turtle.position = vec3()
+		turtle.orientation = initialOrientation
+		turtle.orientationIndex = 1
+		SaveData()
+	elseif string.lower(arg[1]) == "setgps" and arg[2] then
+		-- This is used to input the GPS position that the bot's start position is at
+		-- Will then convert all occupiedPositions to match this new GPS position, so the data is globally usable
+		-- Also simplifies entering waypoints and etc
+		-- Second argument should be formatted as "x,y,z"
+		-- Third argument is optionally, "north","south","east","west" to specify its starting direction
+		local newPos = vec3(stringSplit(arg[2],","))
+		if fs.exists("PathData.bak") then
+			shell.run("delete","PathData.bak")
+		end
+		shell.run("copy","PathData","PathData.bak")
+		
+		local newOP = {}
+		
+		for k,v in pairs(occupiedPositions) do
+			-- k is the string vector, v is a boolean
+			-- Which is unfortunate when it comes time to edit them, but okay
+			local vec = vec3(stringSplit(k,","))
+			vec = vec + newPos
+			newOP[vectorToString(vec)] = v
+		end
+		turtle.position = newPos
+		if arg[3] then
+			-- TODO: Do this later.  We might have to move everything more based on this, if we do it
+			-- Or just, leave it all relative to the orientation it started in, and rely on them to fix orientation when resetting
+		end
+		occupiedPositions = newOP
+		SaveData()
+		print("Positions updated to world positions")
+		-- TODO: This didn't quite work.  It seemed like it did, but then it got lost underground for some reason
+		-- And couldn't get back to base
+		-- It also makes it really hard to debug, rolling back
+	end
+end
 
 -- K after this is whatever we want it to do...
-
-args = {...}
--- So, let's do some command line stuff.  First, an argument that would allow you to change the home position
--- The provided new coords must be relative to the previous home position
--- It then edits all occupiedPositions to match (backing them up first, just in case)
--- Though it should really just be simply... adding newPos, which is a translation vector, to each position.  Easy enough.  
--- (Though for now let's just get it going and training, and we'll jam a bunch of coal in the box)
-
--- So, leave that as a TODO
-
--- The other TODO is to speed and clean it up.  Vectors should be able to equal eachother, per the vector.__eq(a,b), when x=x,y=y,z=z.  But we aren't seeing that. 
-
-
 
 -- Alright, let's call this a training routine.
 -- It should start facing the 'home' chest, which contains coal or fuel, and that's 0,0,0
 
 -- Note that the chest ends up being 1,0,0, when we want to turn to face it while standing at 0,0,0
 repeat
-	turnToAdjacent(vec3(1,0,0))
-	turtle.select(1)
-	turtle.suck()
-	turtle.refuel()
-	-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
-	local target = vec3(math.random(0,16),math.random(0,16),math.random(0,16))
-	print("Getting path to target")
-	local path = GetPath(target)
-	followPath(path)
-	print("Returning to base")
-	target = vec3()
-	path = GetPath(target)
-	followPath(path)
+    if turtle.position ~= turtle.home then
+		print("Returning to base")
+		local path = GetPath(turtle.home)
+		followPath(path)
+	else
+		turnToAdjacent(turtle.home+initialOrientation)
+		turtle.select(1)
+		turtle.suck()
+		turtle.refuel()
+		-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
+		local target
+		repeat
+			target = turtle.home+vec3(math.random(-16,16),math.random(0,16),math.random(-16,16))
+		until not occupiedPositions[vectorToString(target)]
+		print("Getting path to target")
+		local path = GetPath(target)
+		followPath(path)
+	end
 until 1 == 0
