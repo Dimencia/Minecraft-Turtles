@@ -76,7 +76,7 @@ function LoadData()
 		turtle.relativePos = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
 		for k,v in ipairs(orientations) do
-			if v == turtle.orientation then
+			if vecotrToString(v) == vectorToString(turtle.orientation) then
 				orientationIndex = k
 				break
 			end
@@ -227,12 +227,23 @@ function ComputeSquare(aSquare, currentSquare, targetPosition)
 	aSquare.G = currentSquare.G+1
 	aSquare.H = (targetPosition-aSquare.position):len()
 	aSquare.score = aSquare.G + aSquare.H
+	aSquare.count = pathCount
+	pathCount = pathCount + 1
 end
 	
 
 function lowestScoreSort(t,a,b) -- This is a special sort func, that we use to sort the keys so we can iterate properly
     -- And we sort the keys based on the values in the table t
-	return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
+	-- So actually, we should be more careful here.  We want it to finish a branch and try it
+	-- So on ties, which are very common, it should prioritize the most recently added one
+	-- Which is hard to judge.  But at least the most recently added 6, which would be the ones with the highest G
+	
+	-- So I've added a count param that we increment everytime we recalculate
+	if t[a].score == t[b].score then
+		return t[a].count > t[b].count
+	else
+		return t[a].score ~= nil and t[b].score ~= nil and t[a].score < t[b].score
+	end
 end		
 
 function spairs(t, order)
@@ -298,17 +309,19 @@ end
 
 openList = {}
 closedList = {}
+pathCount = 1
 			
 function GetPath(targetPosition)
     print("Getting path for turtle position " .. vectorToString(turtle.relativePos))
 	if turtle.position then print ("Also, it lists a regular position of " .. vectorToString(turtle.position)) end
-	local currentSquare = {position=turtle.relativePos,G=0,H=(targetPosition-turtle.relativePos):len()}
+	local currentSquare = {position=turtle.relativePos,G=0,H=(targetPosition-turtle.relativePos):len(),count = 0}
 	currentSquare.score = currentSquare.G + currentSquare.H -- Manually set these first, the rest rely on a parent
 	
+	pathCount = 1
 	openList = { } -- I guess this is a generic object, which has fields .position
 	openList[vectorToString(currentSquare.position)] = currentSquare -- This makes it easier to add/remove
 	-- Suppose they also have a .score, .G, and .H, and .parent
-	closedList = {}
+	--closedList = {}
 	
 	tickCount = 1
 	
@@ -321,9 +334,9 @@ function GetPath(targetPosition)
 			break
 		end
 		
-		
 		-- Add this to the closed list, kind of assuming we're going to move there.  Sort of.  Remove from open.
-		closedList[vectorToString(currentSquare.position)] = currentSquare
+		--closedList[vectorToString(currentSquare.position)] = currentSquare
+		-- Skip the closed list, we never really use it.
 		openList[vectorToString(currentSquare.position)] = nil -- Remove from open list
 		
 		if currentSquare.position == targetPosition then
@@ -331,8 +344,6 @@ function GetPath(targetPosition)
 			finalMove = currentSquare
 			break
 		end
-		
-		print("Checking position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
 		
 		local adjacentSquares = getAdjacentWalkableSquares(currentSquare) -- This will be a fun func
 		
@@ -343,6 +354,7 @@ function GetPath(targetPosition)
 				-- Add for consideration in next step
 				openList[vectorToString(pos)] = aSquare
 			elseif openList[vectorToString(pos)] then -- aSquare is already in the list, so it already has these params
+			    aSquare = openList[vectorToString(pos)]
 				if currentSquare.G+1 < aSquare.G then
 					-- Our path to aSquare is shorter, use our values
 					ComputeSquare(aSquare, currentSquare, targetPosition)
@@ -350,10 +362,10 @@ function GetPath(targetPosition)
 			end
 			--print("Adjacent square " .. vectorToString(aSquare.position) .. " has score " .. aSquare.score)
 		end
-		print(listLen(openList) .. " remaining entries in open list")
+		
 		tickCount = tickCount + 1
-		if tickCount % 1000 == 0 then
-		    tickCount = 1
+		if tickCount % 100 == 0 then
+			print("Checking 100th position " .. vectorToString(currentSquare.position) .. " with score " .. currentSquare.score)
 			sleep(0.1)
 		end
 		
