@@ -13,28 +13,6 @@ minheap = require("heap")
 
 local logFile = fs.open("Logfile", "w")
 
-
-function newPrint(...)
-    local result = ""
-	for k,v in pairs(arg) do
-	    if k ~= "n" then
-			result = result .. getDisplayString(v) .. " "
-		end
-	end
-	oldPrint(result)
-	logFile.writeLine(result)
-	logFile.flush()
-end
---if not turtle.methodsOverwritten then -- Unsure if turtle.methodsOverwritten doesn't persist, or if print resets itself, something is wrong
-	oldPrint = print -- If you run it, then terminate and run it again, it didn't log anymore.  Guess we have to do this part every time
-	print = newPrint
---end
-
-if turtle.methodsOverwritten then
-	print("Methods already overwritten, skipping them")
-end
-
-
 function getDisplayString(object)
 	local result = ""
 	if type(object) == "string" then
@@ -56,6 +34,28 @@ function getDisplayString(object)
 	end
 	return result
 end
+
+
+function newPrint(...)
+    local result = ""
+	for k,v in pairs(arg) do
+	    if k ~= "n" then
+			result = result .. getDisplayString(v) .. " "
+		end
+	end
+	oldPrint(result)
+	logFile.writeLine(result)
+	logFile.flush()
+end
+--if not turtle.methodsOverwritten then -- Unsure if turtle.methodsOverwritten doesn't persist, or if print resets itself, something is wrong
+	oldPrint = print -- If you run it, then terminate and run it again, it didn't log anymore.  Guess we have to do this part every time
+	print = newPrint
+--end
+
+if turtle.methodsOverwritten then
+	print("Methods already overwritten, skipping them")
+end
+
 
 	
 turtle.occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
