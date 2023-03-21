@@ -35,7 +35,7 @@ if turtle.methodsOverwritten then
 end
 
 
-local function getDisplayString(object)
+function getDisplayString(object)
 	local result = ""
 	if type(object) == "string" then
 		result = result .. object
@@ -221,7 +221,7 @@ end
 turtle.methodsOverwritten = true
 
 
-local function updateTurtleOrientationLeft()
+function updateTurtleOrientationLeft()
 	
 	turtle.orientationIndex = turtle.orientationIndex-1
 	if turtle.orientationIndex < 1 then
@@ -230,7 +230,7 @@ local function updateTurtleOrientationLeft()
 	turtle.orientation = turtle.orientations[turtle.orientationIndex]
 end
 
-local function updateTurtleOrientationRight()
+function updateTurtleOrientationRight()
 	turtle.orientationIndex = turtle.orientationIndex+1
 	if turtle.orientationIndex > #turtle.orientations then
 		turtle.orientationIndex = 1
@@ -243,7 +243,7 @@ end
 -- Pathfinding Stuff Below
 --
 
-local function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
+function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
 	print("Calculating turn from " .. vectorToString(turtle.position) .. " to " .. vectorToString(adjacentPosition))
 	local newOrientation = adjacentPosition-turtle.position
 	newOrientation.y = 0
