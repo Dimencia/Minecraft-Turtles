@@ -11,7 +11,7 @@ vec3 = require("vec3")
 json = require("json")
 minheap = require("heap")
 
-logFile = fs.open("Logfile", "w")
+local logFile = fs.open("Logfile", "w")
 
 
 function newPrint(...)
@@ -35,7 +35,7 @@ if turtle.methodsOverwritten then
 end
 
 
-function getDisplayString(object)
+local function getDisplayString(object)
 	local result = ""
 	if type(object) == "string" then
 		result = result .. object
@@ -56,19 +56,20 @@ function getDisplayString(object)
 	end
 	return result
 end
-	
-occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
-local initialOrientation = vec3(1,0,0)
-local initialPosition = vec3(0,0,0)
 
-orientations = { vec3(1,0,0),
+	
+turtle.occupiedPositions = {} -- The key is the vec3, and the value is true if occupied, or nil/false if not
+turtle.initialOrientation = vec3(1,0,0)
+turtle.initialPosition = vec3(0,0,0)
+
+turtle.orientations = { vec3(1,0,0),
 				 vec3(0,0,1),
 				 vec3(-1,0,0),
 				 vec3(0,0,-1)} -- Where going higher in the list is turning right
-orientationIndex = 1
+turtle.orientationIndex = 1
 
-directions = { "east","south","west","north"} -- In the same order as orientations so orientationIndex can still be used
--- This could get weird because the occupiedPositions might be in reference to the wrong x or z sign
+turtle.directions = { "east","south","west","north"} -- In the same order as turtle.orientations so turtle.orientationIndex can still be used
+-- This could get weird because the turtle.occupiedPositions might be in reference to the wrong x or z sign
 -- So for example, we were pointed north, but gave it the vector for east
 -- So when I went 'negative x' in the relative implementation, I was really going positive z
 -- so anything with coords of like, 10,0,-2  , is actually -2,0,-10
@@ -80,29 +81,29 @@ directions = { "east","south","west","north"} -- In the same order as orientatio
 -- So what are our cases?
 -- If it went from north to south, reverse all X and Z
 -- If it went from east to west, reverse all X and Z...
--- If it went from initialOrientation of east, and they tell us that's actually north, swap Z and X, and negate Z
+-- If it went from turtle.initialOrientation of east, and they tell us that's actually north, swap Z and X, and negate Z
 -- If it went from east to south, swap Z and X
 -- This is hard.  Do it later.  These are unused so far, we do everything relative to our starting orientation
 
-adjacentVectors = { vec3(1,0,0),
+turtle.adjacentVectors = { vec3(1,0,0),
                     vec3(0,1,0),
 					vec3(0,0,1),
 					vec3(-1,0,0),
 					vec3(0,-1,0),
 					vec3(0,0,-1)} -- When looking for adjacents, we can iterate over this and add it to the position
 
-turtle.orientation = initialOrientation 
-turtle.position = initialPosition
-turtle.home = initialPosition
+turtle.orientation = turtle.initialOrientation 
+turtle.position = turtle.initialPosition
+turtle.home = turtle.initialPosition
 
 function vectorToString(vec)
 	return vec.x .. "," .. vec.y .. "," .. vec.z
 end
 
 function SaveData()
-	-- Updates our datafile with the turtle's position, orientation, and occupiedPositions (and maybe more later)
+	-- Updates our datafile with the turtle's position, orientation, and turtle.occupiedPositions (and maybe more later)
 	local dataFile = fs.open("PathData", "w")
-	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=occupiedPositions, home=turtle.home}
+	local allData = {position=turtle.position, orientation=turtle.orientation, turtle.occupiedPositions=turtle.occupiedPositions, home=turtle.home}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
@@ -115,16 +116,16 @@ function LoadData()
 	if allData and allData.position and allData.orientation and allData.occupiedPositions then
 		turtle.position = vec3(allData.position)
 		turtle.orientation = vec3(allData.orientation)
-		for k,v in ipairs(orientations) do
+		for k,v in ipairs(turtle.orientations) do
 			if vectorToString(v) == vectorToString(turtle.orientation) then
-				orientationIndex = k
+				turtle.orientationIndex = k
 				break
 			end
 		end
 		if allData.home then
 			turtle.home = vec3(allData.home)
 		end
-		occupiedPositions = allData.occupiedPositions
+		turtle.occupiedPositions = allData.occupiedPositions
 	end
 	f.close()
 end
@@ -154,13 +155,13 @@ end
 SaveData() -- Make sure it's not empty if we don't make it to the next tick
 
 if not turtle.methodsOverwritten then
-	baseDig = turtle.dig
+	local baseDig = turtle.dig
 	turtle.dig = function() -- We may have to pause a tick to wait for gravel to fall... 
 		baseDig()
 		detectBlocks() -- Check all occupied things after we dig
 	end
 
-	baseForward = turtle.forward
+	local baseForward = turtle.forward
 	turtle.forward = function()
 		detectBlocks()
 		if baseForward() then
@@ -173,7 +174,7 @@ if not turtle.methodsOverwritten then
 			return false
 	end
 
-	baseUp = turtle.up
+	local baseUp = turtle.up
 	turtle.up = function()
 		detectBlocks()
 		if baseUp() then
@@ -186,7 +187,7 @@ if not turtle.methodsOverwritten then
 		return false
 	end
 
-	baseDown = turtle.down
+	local baseDown = turtle.down
 	turtle.down = function()
 		detectBlocks()
 		if baseDown() then
@@ -199,7 +200,7 @@ if not turtle.methodsOverwritten then
 		return false
 	end
 
-	baseTurnLeft = turtle.turnLeft
+	local baseTurnLeft = turtle.turnLeft
 	turtle.turnLeft = function()
 		baseTurnLeft()
 		local oldOrientation = turtle.orientation:clone()
@@ -208,7 +209,7 @@ if not turtle.methodsOverwritten then
 		detectBlocks()
 	end
 
-	baseTurnRight = turtle.turnRight
+	local baseTurnRight = turtle.turnRight
 	turtle.turnRight = function()
 		baseTurnRight()
 		local oldOrientation = turtle.orientation:clone()
@@ -220,21 +221,21 @@ end
 turtle.methodsOverwritten = true
 
 
-function updateTurtleOrientationLeft()
+local function updateTurtleOrientationLeft()
 	
-	orientationIndex = orientationIndex-1
-	if orientationIndex < 1 then
-		orientationIndex = #orientations
+	turtle.orientationIndex = turtle.orientationIndex-1
+	if turtle.orientationIndex < 1 then
+		turtle.orientationIndex = #turtle.orientations
 	end
-	turtle.orientation = orientations[orientationIndex]
+	turtle.orientation = turtle.orientations[turtle.orientationIndex]
 end
 
-function updateTurtleOrientationRight()
-	orientationIndex = orientationIndex+1
-	if orientationIndex > #orientations then
-		orientationIndex = 1
+local function updateTurtleOrientationRight()
+	turtle.orientationIndex = turtle.orientationIndex+1
+	if turtle.orientationIndex > #turtle.orientations then
+		turtle.orientationIndex = 1
 	end
-	turtle.orientation = orientations[orientationIndex]
+	turtle.orientation = turtle.orientations[turtle.orientationIndex]
 end
 
 
@@ -242,7 +243,7 @@ end
 -- Pathfinding Stuff Below
 --
 
-function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
+local function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones... 
 	print("Calculating turn from " .. vectorToString(turtle.position) .. " to " .. vectorToString(adjacentPosition))
 	local newOrientation = adjacentPosition-turtle.position
 	newOrientation.y = 0
@@ -250,11 +251,11 @@ function turnToAdjacent(adjacentPosition) -- Only use on adjacent ones...
 	-- First, if it was y only, we're done
 	if newOrientation == vec3() or newOrientation == turtle.orientation then return true end
 	
-	-- Then iteration through orientations forward, if it's <=2 to the target we can go right, otherwise left
+	-- Then iteration through turtle.orientations forward, if it's <=2 to the target we can go right, otherwise left
 	for i=1,4 do
-		local t = orientationIndex + i
-		if t > #orientations then t = t - #orientations end
-		if orientations[t] == newOrientation then
+		local t = turtle.orientationIndex + i
+		if t > #turtle.orientations then t = t - #turtle.orientations end
+		if turtle.orientations[t] == newOrientation then
 			if i < 2 then
 				turtle.turnRight()
 				return true
@@ -273,9 +274,9 @@ end
 
 function detectBlocks()
 	-- Detects all blocks and stores the data
-	occupiedPositions[vectorToString(turtle.position+turtle.orientation)] = turtle.detect()
-	occupiedPositions[vectorToString(turtle.position+vec3(0,1,0))] = turtle.detectUp()
-	occupiedPositions[vectorToString(turtle.position+vec3(0,-1,0))] = turtle.detectDown()
+	turtle.occupiedPositions[vectorToString(turtle.position+turtle.orientation)] = turtle.detect()
+	turtle.occupiedPositions[vectorToString(turtle.position+vec3(0,1,0))] = turtle.detectUp()
+	turtle.occupiedPositions[vectorToString(turtle.position+vec3(0,-1,0))] = turtle.detectDown()
 	SaveData()
 end
 			
@@ -288,9 +289,9 @@ end
 			
 function getAdjacentWalkableSquares(currentSquare)
 	local results = {}
-	for k,v in pairs(adjacentVectors) do
+	for k,v in pairs(turtle.adjacentVectors) do
 		local targetVec = currentSquare.position + v
-		if not occupiedPositions[vectorToString(targetVec)] then -- I am unsure that this works, at least not reliably, it's weird
+		if not turtle.occupiedPositions[vectorToString(targetVec)] then -- I am unsure that this works, at least not reliably, it's weird
 			results[targetVec] = {position=targetVec}
 		end
 	end
@@ -371,26 +372,30 @@ function followPath(moveList)
 		print("Performing move to adjacent square from " .. vectorToString(turtle.position) .. " to " .. vectorToString(v.position))
 		local targetVector = v.position - turtle.position
 		local success
-		if v.position ~= turtle.position then
+		
+		-- We actually just want to get adjacent to the target position
+		-- And then we turn to face it and call it done
+		
+		if v.position ~= turtle.position and targetVector:len() > 1 then
 			if targetVector.y ~= 0 then
 				-- Just go up or down
 				if targetVector.y > 0 then
 					success = turtle.up()
-					if not success then occupiedPositions[vectorToString(v.position)] = true end
+					if not success then turtle.occupiedPositions[vectorToString(v.position)] = true end
 				else
 					success = turtle.down()
-					if not success then occupiedPositions[vectorToString(v.position)] = true end
+					if not success then turtle.occupiedPositions[vectorToString(v.position)] = true end
 				end
 			else
 				turnToAdjacent(v.position)
 				success = turtle.forward()
-				if not success then occupiedPositions[vectorToString(v.position)] = true end
+				if not success then turtle.occupiedPositions[vectorToString(v.position)] = true end
 			end
 			
 			if not success then -- We were blocked for some reason, re-pathfind
 				-- Find the target...
 				print("Obstacle detected, calculating and following new path")
-				--print("Occupied Positions: ", occupiedPositions)
+				--print("Occupied Positions: ", turtle.occupiedPositions)
 				-- SO, this is really weird and really annoying.
 				-- If this happens, we seem to often path back to the same spot, even though it's occupied
 				-- But only sometimes, not always, it's wild.  
@@ -409,18 +414,60 @@ end
 
 local arg = {...}
 
+turtle.moveTo = function(targetVector)
+	local path = GetPath(target)
+	followPath(path)
+	turnToAdjacent(targetVector)
+end
+turtle.getPath = GetPath
+turtle.followPath = followPath
+turtle.turnToAdjacent = turnToAdjacent
+turtle.reset = function()
+	turtle.position = vec3()
+	turtle.orientation = turtle.initialOrientation
+	turtle.orientationIndex = 1
+	SaveData()
+end
+turtle.setGPS = function(newPos, newOrientation)
+	-- This is used to input the GPS position that the bot's start position is at
+	-- Will then convert all turtle.occupiedPositions to match this new GPS position, so the data is globally usable
+	-- Also simplifies entering waypoints and etc
+	-- newPos should be a vec3
+	-- second argument is optionally, "north","south","east","west" to specify its starting direction
+	if fs.exists("PathData.bak") then
+		shell.run("delete","PathData.bak")
+	end
+	shell.run("copy","PathData","PathData.bak")
+	
+	local newOP = {}
+	
+	for k,v in pairs(turtle.occupiedPositions) do
+		-- k is the string vector, v is a boolean
+		-- Which is unfortunate when it comes time to edit them, but okay
+		local vec = vec3(stringSplit(k,","))
+		vec = vec + newPos
+		newOP[vectorToString(vec)] = v
+	end
+	turtle.position = newPos
+	turtle.orientation = newOrientation
 
+	turtle.occupiedPositions = newOP
+	SaveData()
+	print("Positions updated to world positions")
+	
+	
+end
 
 if arg[1] then
 	print(arg)
 	if arg[1] == "reset" then
 		turtle.position = vec3()
-		turtle.orientation = initialOrientation
+		turtle.orientation = turtle.initialOrientation
 		turtle.orientationIndex = 1
 		SaveData()
 	elseif string.lower(arg[1]) == "setgps" and arg[2] then
 		-- This is used to input the GPS position that the bot's start position is at
-		-- Will then convert all occupiedPositions to match this new GPS position, so the data is globally usable
+		-- Will then convert all turtle.occupiedPositions to match this new GPS position, so the data is globally usable
 		-- Also simplifies entering waypoints and etc
 		-- Second argument should be formatted as "x,y,z"
 		-- Third argument is optionally, "north","south","east","west" to specify its starting direction
@@ -432,7 +479,7 @@ if arg[1] then
 		
 		local newOP = {}
 		
-		for k,v in pairs(occupiedPositions) do
+		for k,v in pairs(turtle.occupiedPositions) do
 			-- k is the string vector, v is a boolean
 			-- Which is unfortunate when it comes time to edit them, but okay
 			local vec = vec3(stringSplit(k,","))
@@ -444,7 +491,7 @@ if arg[1] then
 			-- TODO: Do this later.  We might have to move everything more based on this, if we do it
 			-- Or just, leave it all relative to the orientation it started in, and rely on them to fix orientation when resetting
 		end
-		occupiedPositions = newOP
+		turtle.occupiedPositions = newOP
 		SaveData()
 		print("Positions updated to world positions")
 		-- TODO: This didn't quite work.  It seemed like it did, but then it got lost underground for some reason
@@ -459,23 +506,24 @@ end
 -- It should start facing the 'home' chest, which contains coal or fuel, and that's 0,0,0
 
 -- Note that the chest ends up being 1,0,0, when we want to turn to face it while standing at 0,0,0
-repeat
-    if turtle.position ~= turtle.home then
-		print("Returning to base")
-		local path = GetPath(turtle.home)
-		followPath(path)
-	else
-		turnToAdjacent(turtle.home+initialOrientation)
-		turtle.select(1)
-		turtle.suck()
-		turtle.refuel()
-		-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
-		local target
-		repeat
-			target = turtle.home+vec3(math.random(-16,16),math.random(0,16),math.random(-16,16))
-		until not occupiedPositions[vectorToString(target)]
-		print("Getting path to target")
-		local path = GetPath(target)
-		followPath(path)
-	end
-until 1 == 0
+--repeat
+--    if turtle.position ~= turtle.home then
+--		print("Returning to base")
+--		local path = GetPath(turtle.home)
+--		followPath(path)
+--	else
+--		-- followPath should now just get us adjacent and already turn us...
+--		--turnToAdjacent(turtle.home+turtle.initialOrientation)
+--		turtle.select(1)
+--		turtle.suck()
+--		turtle.refuel()
+--		-- Generate some random coords.  Stay within 16 or so blocks on each to keep it somewhat reasonable
+--		local target
+--		repeat
+--			target = turtle.home+vec3(math.random(-16,16),math.random(0,16),math.random(-16,16))
+--		until not turtle.occupiedPositions[vectorToString(target)]
+--		print("Getting path to target")
+--		local path = GetPath(target)
+--		followPath(path)
+--	end
+--until 1 == 0
