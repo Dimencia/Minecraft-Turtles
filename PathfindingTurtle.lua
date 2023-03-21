@@ -103,7 +103,7 @@ end
 function SaveData()
 	-- Updates our datafile with the turtle's position, orientation, and turtle.occupiedPositions (and maybe more later)
 	local dataFile = fs.open("PathData", "w")
-	local allData = {position=turtle.position, orientation=turtle.orientation, turtle.occupiedPositions=turtle.occupiedPositions, home=turtle.home}
+	local allData = {position=turtle.position, orientation=turtle.orientation, occupiedPositions=turtle.occupiedPositions, home=turtle.home}
 	local dataString = json.encode(allData)
 	dataFile.write(dataString)
 	dataFile.flush()
