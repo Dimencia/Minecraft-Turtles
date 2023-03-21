@@ -148,6 +148,23 @@ function hasAnyElements(list)
 	return false
 end
 
+function updateTurtleOrientationLeft()
+	
+	turtle.orientationIndex = turtle.orientationIndex-1
+	if turtle.orientationIndex < 1 then
+		turtle.orientationIndex = #turtle.orientations
+	end
+	turtle.orientation = turtle.orientations[turtle.orientationIndex]
+end
+
+function updateTurtleOrientationRight()
+	turtle.orientationIndex = turtle.orientationIndex+1
+	if turtle.orientationIndex > #turtle.orientations then
+		turtle.orientationIndex = 1
+	end
+	turtle.orientation = turtle.orientations[turtle.orientationIndex]
+end
+
 if fs.exists("PathData") then
 	LoadData() -- Load before opening our write handle, which will erase everything
 end
@@ -220,23 +237,6 @@ if not turtle.methodsOverwritten then
 end
 turtle.methodsOverwritten = true
 
-
-function updateTurtleOrientationLeft()
-	
-	turtle.orientationIndex = turtle.orientationIndex-1
-	if turtle.orientationIndex < 1 then
-		turtle.orientationIndex = #turtle.orientations
-	end
-	turtle.orientation = turtle.orientations[turtle.orientationIndex]
-end
-
-function updateTurtleOrientationRight()
-	turtle.orientationIndex = turtle.orientationIndex+1
-	if turtle.orientationIndex > #turtle.orientations then
-		turtle.orientationIndex = 1
-	end
-	turtle.orientation = turtle.orientations[turtle.orientationIndex]
-end
 
 
 -- 
